@@ -8,10 +8,10 @@ test('settings page autosaves changes, linked toggles, and reset', async () => {
   const source = html.match(/<script>([\s\S]*?)<\/script>/u)?.[1]
   assert.ok(source)
   const initial = { maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-    notchHover: true, notchApprovals: true, compactApprovals: false, hideTrayIcon: true }
+    notchHover: true, notchApprovals: true, compactApprovals: false, hideTrayIcon: true, language: 'auto' }
   const fields = Object.fromEntries(Object.entries(initial).map(([name, value]) => [name, {
-    type: typeof value === 'boolean' ? 'checkbox' : 'number',
-    value: typeof value === 'number' ? String(value) : '', checked: Boolean(value),
+    type: typeof value === 'boolean' ? 'checkbox' : typeof value === 'number' ? 'number' : 'select-one',
+    value: typeof value === 'number' ? String(value) : typeof value === 'string' ? value : '', checked: Boolean(value),
     listeners: {}, addEventListener(event, listener) { this.listeners[event] = listener },
     checkValidity() { return Number.isInteger(Number(this.value)) && Number(this.value) > 0 },
   }]))
@@ -33,8 +33,10 @@ test('settings page autosaves changes, linked toggles, and reset', async () => {
   const context = {
     document: {
       querySelector: selector => fields[/\[name="([^"]+)"\]/u.exec(selector)?.[1]],
+      querySelectorAll: () => [], documentElement: { lang: '' }, title: '',
       getElementById: id => ({ status, reset, preview })[id],
     },
+    navigator: { language: 'zh-CN' },
     fetch,
     setTimeout: callback => { const id = ++nextTimer; timers.set(id, callback); return id },
     clearTimeout: id => timers.delete(id),
@@ -48,12 +50,18 @@ test('settings page autosaves changes, linked toggles, and reset', async () => {
   await settle()
   assert.equal(reset.disabled, false)
 
+  fields.language.value = 'en'
+  fields.language.listeners.change()
+  await flush()
+  assert.equal(requests.at(-1).language, 'en')
+  assert.equal(context.document.documentElement.lang, 'en')
+
   fields.notchHover.checked = false
   fields.notchHover.listeners.change()
   await flush()
   assert.equal(requests.at(-1).notchHover, false)
   assert.equal(requests.at(-1).hideTrayIcon, false)
-  assert.equal(status.textContent, '已自动保存并应用')
+  assert.equal(status.textContent, 'Saved and applied')
 
   fields.hideTrayIcon.checked = true
   fields.hideTrayIcon.listeners.change()
@@ -70,7 +78,7 @@ test('settings page autosaves changes, linked toggles, and reset', async () => {
   reset.onclick()
   await flush()
   assert.deepEqual(requests.at(-1), { maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-    notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false })
+    notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false, language: 'auto' })
 
   fields.compactApprovals.checked = true
   fields.compactApprovals.listeners.change()

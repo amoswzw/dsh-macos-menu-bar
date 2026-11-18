@@ -8,9 +8,13 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 插件类别：**UI & Experience**。仅支持 macOS 的 **Desktop** profile；请勿按 Web profile 的通用安装示例安装。
 
+![菜单栏、刘海入口、审批与设置的动画演示](https://raw.githubusercontent.com/amoswzw/dsh-macos-menu-bar/main/docs/screenshots/demo.gif)
+
+动画由插件界面截图编排；其中审批卡片是预览，选择按钮不会授权任务。
+
 ## 截图
 
-配置页（从 DSH Host 提供的插件页面截取，不包含会话侧栏）：
+配置页（使用本仓库设置页和示例配置渲染，不包含会话侧栏）：
 
 ![菜单栏与灵动岛配置页](docs/screenshots/settings.png)
 
@@ -24,17 +28,19 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 ## 兼容性与安装
 
-需要 macOS、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。先完全退出正在运行的 Desktop，再从 npm 安装已发布的 `0.1.0` 版本：
+需要 macOS、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。先完全退出正在运行的 Desktop，再从 GitHub 安装包含语言切换的当前源码：
 
 ```sh
 DSH_CLI="/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh"
-"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar@0.1.0
+"$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar
 open -a "/Applications/DeepSeek Harness.app"
 ```
 
 克隆仓库后，也可运行 `./install.sh`；脚本默认从 GitHub 源码安装。传入包名可改用 npm，例如 `./install.sh @amoswzw/dsh-macos-menu-bar@0.1.0`；传入 `.` 则从本地仓库安装。如果 DSH 安装在其他位置，可设置 `DSH_CLI=/path/to/dsh`。脚本只安装插件，不会自动重启正在运行的 Desktop。
 
-也可从 GitHub 安装：`"$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar`，或把来源固定到某次提交：`github:amoswzw/dsh-macos-menu-bar#<commit-sha>`。安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
+已发布的 npm `0.1.0` 可用 `"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar@0.1.0` 安装，但它早于语言切换功能。也可把 GitHub 来源固定到某次提交：`github:amoswzw/dsh-macos-menu-bar#<commit-sha>`。安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
+
+English quick start: this plugin requires macOS and DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`. Quit Desktop completely, run the GitHub installation commands above, and reopen the app. Open **Menu Bar & Island** in the DSH sidebar to choose **Follow system**, **English**, or **简体中文**. The npm `0.1.0` release predates the language selector.
 
 卸载：
 
@@ -52,7 +58,7 @@ open -a "/Applications/DeepSeek Harness.app"
 
 左键点击菜单栏图标可显示或隐藏同一个 Desktop 窗口。弹窗显示期间会临时加入所有 macOS Space，以便从当前桌面打开；收起后恢复原窗口的 Space 属性。右键提供“打开完整窗口”和“退出”。弹出窗口失焦时自动隐藏，任务继续运行。工具审批框提供“拒绝”“查看详情”“允许一次”；“查看详情”打开完整 Desktop 页面并交还给原有审批界面。应用访问等使用 DSH `user-questions` 审批意图的请求也会弹出原生确认框。允许一次只答复当前请求；取消或通信失败不会授权。
 
-在 DSH 左侧栏打开 **菜单栏与灵动岛** 配置页，可设置弹窗最大宽高、失焦收起、鼠标离开收起、刘海悬停打开主窗口、审批卡片、菜单栏内紧凑审批和隐藏菜单栏图标。更改会自动保存，恢复默认也会立即应用。尺寸按 macOS 逻辑点计算，并按当前屏幕可用区域限制；默认最大宽高为 1120 × 850。原生 AppKit 面板读取内建屏幕的安全区与刘海两侧区域；有刘海时紧贴屏幕顶边，没有刘海的旧款 MacBook 显示在菜单栏下方。鼠标移到刘海黑色岛的任一可见位置会直接弹出原来的 Desktop 主窗口；只有审批请求才展开刘海审批卡片。刘海左侧显示 DeepSeek 图标，工作或等待审批时图标会轻微呼吸；右侧指示灯空闲时为灰色，Agent 工作时蓝色呼吸，等待审批时橙色呼吸。隐藏菜单栏图标需要同时开启悬停入口、使用内建屏幕作为主屏，而且原生面板必须可用。设置保存在 `$DSH_HOME/macos-menu-bar.json`，不修改其他插件的配置。
+在 DSH 左侧栏打开 **菜单栏与灵动岛** 配置页，可设置弹窗最大宽高、失焦收起、鼠标离开收起、刘海悬停打开主窗口、审批卡片、菜单栏内紧凑审批、隐藏菜单栏图标及语言。界面支持简体中文和英语，默认跟随 macOS 语言，也可手动选择；设置页、菜单栏菜单、审批预览和插件自身的审批文案会一起切换。更改会自动保存，恢复默认也会立即应用。尺寸按 macOS 逻辑点计算，并按当前屏幕可用区域限制；默认最大宽高为 1120 × 850。原生 AppKit 面板读取内建屏幕的安全区与刘海两侧区域；有刘海时紧贴屏幕顶边，没有刘海的旧款 MacBook 显示在菜单栏下方。鼠标移到刘海黑色岛的任一可见位置会直接弹出原来的 Desktop 主窗口；只有审批请求才展开刘海审批卡片。刘海左侧显示 DeepSeek 图标，工作或等待审批时图标会轻微呼吸；右侧指示灯空闲时为灰色，Agent 工作时蓝色呼吸，等待审批时橙色呼吸。隐藏菜单栏图标需要同时开启悬停入口、使用内建屏幕作为主屏，而且原生面板必须可用。设置保存在 `$DSH_HOME/macos-menu-bar.json`，不修改其他插件的配置。
 
 配置页中的“预览审批弹窗”会打开一张示例卡片，供检查位置和样式；预览选择不会授权任务。开启菜单栏内紧凑审批后，标题与请求摘要显示在刘海左侧、按钮显示在右侧，卡片不会进入工作区；长按钮文字可悬停查看完整标签。多个会话同时请求审批时，卡片按收到的顺序逐条显示，并标出等待数量；已取消的请求会从队列移除。
 

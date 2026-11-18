@@ -3,6 +3,12 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
+    const language = () => {
+      let selected = 'auto'
+      try { selected = window.localStorage.getItem('dsh-macos-menu-bar-language') || 'auto' } catch { /* Storage can be disabled. */ }
+      return selected === 'auto' ? (/^zh(?:-|_|$)/i.test(window.navigator.language) ? 'zh-CN' : 'en') : selected
+    }
+    const label = () => language() === 'zh-CN' ? '菜单栏与灵动岛' : 'Menu Bar & Island'
     function Icon() {
       return h('svg', { width: 20, height: 20, viewBox: '0 0 20 20', fill: 'none', 'aria-hidden': true },
         h('rect', { x: 2, y: 3, width: 16, height: 14, rx: 4, stroke: 'currentColor', strokeWidth: 1.6 }),
@@ -10,7 +16,7 @@ window.__ModuleLoader__.load({
     }
     function SettingsPage() {
       return h('div', { style: { position: 'relative', height: '100%', minHeight: 0 } },
-        h('iframe', { title: '菜单栏与灵动岛设置', src: '/macos-menu-bar/settings.html',
+        h('iframe', { title: label(), src: '/macos-menu-bar/settings.html',
           style: { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0, display: 'block' } }))
     }
     return { inject: [], apply(ctx) {
@@ -30,7 +36,7 @@ window.__ModuleLoader__.load({
           try {
             dispose = [
               slots.inject('sidebar.panellist', () => slots.register({
-                name: 'sidebar.panellist', id: 'macos-menu-bar', order: 45, label: () => '菜单栏与灵动岛',
+                name: 'sidebar.panellist', id: 'macos-menu-bar', order: 45, label,
               }, Icon)),
               slots.inject('main', () => slots.register({ name: 'main', key: 'macos-menu-bar' }, SettingsPage)),
             ]

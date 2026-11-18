@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DSH macOS Menu Bar · UI demo</title>
+<style>
+  * { box-sizing: border-box }
+  html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden }
+  body { font: 16px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; color: #f2f6ff;
+    background: radial-gradient(circle at 78% 20%, #17345b 0, transparent 35%),
+      radial-gradient(circle at 15% 85%, #13284a 0, transparent 45%), #080d18 }
+  .ambient { position: absolute; inset: 0; background: linear-gradient(135deg, #ffffff06, transparent 55%); pointer-events: none }
+  .eyebrow { position: absolute; left: 74px; top: 42px; color: #73abff; font-size: 14px; font-weight: 700; letter-spacing: .14em }
+  .brand { position: absolute; left: 74px; top: 74px; font-size: 30px; font-weight: 750; letter-spacing: -.025em }
+  .subtitle { position: absolute; right: 74px; top: 88px; font-size: 15px; color: #a7b8d5 }
+  .scene { position: absolute; inset: 132px 56px 74px; opacity: 0; pointer-events: none }
+  .scene h2 { margin: 0; font-size: 26px; font-weight: 700 }
+  .scene p { margin: 10px 0 0; color: #b2c0d6; font-size: 17px; line-height: 1.5 }
+  .mock { position: absolute; left: 0; right: 0; bottom: 0; height: 355px; border-radius: 24px;
+    border: 1px solid #a9c6f82a; background: #111b2c; overflow: hidden; box-shadow: 0 26px 70px #0008 }
+  .mockbar { height: 43px; background: #263246; border-bottom: 1px solid #ffffff20; display: flex; align-items: center; padding: 0 18px }
+  .dots { display: flex; gap: 8px }.dots i { width: 11px; height: 11px; border-radius: 50%; background: #ff605c }
+  .dots i:nth-child(2) { background: #ffbd44 }.dots i:nth-child(3) { background: #00ca4e }
+  .mockbar span { margin: auto; padding-right: 50px; color: #cad5e7; font-size: 13px }
+  .menu { height: 68px; position: relative; background: #161a22; border-bottom: 1px solid #ffffff13 }
+  .menu .apple { position: absolute; left: 22px; top: 18px; font-size: 22px }
+  .menu .menu-name { position: absolute; left: 65px; top: 23px; color: #dce4f2; font-size: 15px }
+  .menu .island { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 500px; height: 67px; object-fit: fill }
+  .menu .clock { position: absolute; right: 24px; top: 23px; color: #c2cad7; font-size: 14px }
+  .window { position: absolute; left: 180px; top: 130px; width: 805px; height: 265px; overflow: hidden;
+    border-radius: 15px; border: 1px solid #ffffff25; background: #111; box-shadow: 0 24px 45px #000b }
+  .window:before { content: "●  ●  ●     DeepSeek Harness"; display: block; height: 32px; padding: 8px 14px;
+    color: #c9d5e4; background: #232934; font-size: 12px; letter-spacing: .1em }
+  .window img { display: block; width: 100%; height: auto }
+  .pointer { position: absolute; left: 585px; top: 19px; width: 16px; height: 22px; background: #f8fbff;
+    clip-path: polygon(0 0, 0 100%, 5px 15px, 15px 16px); filter: drop-shadow(1px 2px 1px #000) }
+  .approval-shell { position: absolute; left: 0; right: 0; top: 140px; height: 285px; border-radius: 24px;
+    background: #151b28; border: 1px solid #9bbefc33; box-shadow: 0 25px 70px #0008; overflow: hidden }
+  .approval-shell .menu { height: 74px }
+  .approval-shell .menu .clock { top: 25px }
+  .approval-shot { position: absolute; left: 36px; top: 118px; width: 1096px; height: 60px; object-fit: fill }
+  .approval-caption { position: absolute; left: 44px; bottom: 38px; color: #d3ddec; font-size: 17px }
+  .badge { display: inline-block; margin-left: 14px; padding: 6px 10px; border-radius: 8px;
+    background: #62491d; color: #ffcf77; font-size: 13px; vertical-align: middle }
+  .settings-shell { position: absolute; left: 0; right: 0; top: 94px; height: 405px; border-radius: 22px;
+    overflow: hidden; background: #101010; border: 1px solid #ffffff2c; box-shadow: 0 25px 70px #0008 }
+  .settings-shell img { display: block; width: 100%; height: auto }
+  .progress { position: absolute; left: 74px; right: 74px; bottom: 35px; height: 4px; display: flex; gap: 8px }
+  .progress i { flex: 1; border-radius: 8px; background: #5d72904d }
+  .progress i.active { background: #62a0ff; box-shadow: 0 0 13px #5f9dff88 }
+  .note { position: absolute; right: 74px; bottom: 53px; font-size: 12px; color: #74849d }
+</style>
+<div class="ambient"></div>
+<div class="eyebrow">DEEPSEEK HARNESS PLUGIN</div>
+<div class="brand">DSH macOS Menu Bar</div>
+<div class="subtitle">菜单栏 · 刘海入口 · 原生审批</div>
+<section class="scene" id="scene0">
+  <h2>从菜单栏进入 DSH</h2><p>鼠标移到刘海区域，展开现有 Desktop 窗口；离开后可自动收起。</p>
+  <div class="mock"><div class="mockbar"><div class="dots"><i></i><i></i><i></i></div><span>macOS Desktop · 界面效果演示</span></div>
+    <div class="menu"><span class="apple">●</span><span class="menu-name">DeepSeek Harness</span><img class="island" src="screenshots/island-idle.png"><span class="clock">11:52</span><div class="pointer" id="pointer"></div></div>
+    <div class="window" id="popup"><img src="screenshots/settings.png" alt="DSH 插件配置页"></div>
+  </div>
+</section>
+<section class="scene" id="scene1">
+  <h2>审批直接出现在刘海附近</h2><p>多会话请求排队显示；也可选择不超出菜单栏的紧凑卡片。</p>
+  <div class="approval-shell"><div class="menu"><span class="apple">●</span><span class="menu-name">DeepSeek Harness</span><span class="clock">11:52</span></div>
+    <img class="approval-shot" src="screenshots/approval-compact.png" alt="紧凑审批卡片">
+    <div class="approval-caption">拒绝 · 查看详情 · 允许一次 <span class="badge">预览卡片，不会授权任务</span></div>
+  </div>
+</section>
+<section class="scene" id="scene2">
+  <h2>在 DSH 内调整行为</h2><p>窗口尺寸、自动收起、刘海悬停、审批样式与语言均可自动保存。</p>
+  <div class="settings-shell"><img src="screenshots/settings.png" alt="菜单栏与灵动岛配置页"></div>
+</section>
+<div class="note">由插件界面截图编排 · 审批画面为预览</div>
+<div class="progress"><i></i><i></i><i></i></div>
+<script>
+  const scenes = [...document.querySelectorAll('.scene')]
+  const dots = [...document.querySelectorAll('.progress i')]
+  const clamp = n => Math.max(0, Math.min(1, n))
+  function setDemoTime(time) {
+    const t = ((time % 12) + 12) % 12
+    scenes.forEach((scene, index) => {
+      const start = index * 4
+      const local = t - start
+      const alpha = clamp(local / .45) * clamp((4 - local) / .45)
+      scene.style.opacity = alpha
+      scene.style.transform = `translateY(${(1 - alpha) * 15}px)`
+      dots[index].classList.toggle('active', local >= 0 && local < 4)
+    })
+    const appear = clamp((t - 1.0) / .55)
+    const popup = document.getElementById('popup')
+    popup.style.opacity = appear
+    popup.style.transform = `translateY(${(1 - appear) * -23}px) scale(${.97 + .03 * appear})`
+    document.getElementById('pointer').style.transform = `translateY(${Math.sin(t * 2.3) * 4}px)`
+    document.querySelector('.settings-shell img').style.transform = `translateY(${-clamp((t - 8.6) / 2.5) * 210}px)`
+  }
+  window.setDemoTime = setDemoTime
+  setDemoTime(0.2)
+</script>
+</html>

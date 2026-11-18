@@ -4,7 +4,8 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 
 export const defaults = Object.freeze({ maxWidth: 1120, maxHeight: 850, hideOnBlur: true,
-  hideOnMouseLeave: true, notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false })
+  hideOnMouseLeave: true, notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false,
+  language: 'auto' })
 const statePath = () => join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'macos-menu-bar.json')
 
 export function validate(value) {
@@ -18,6 +19,7 @@ export function validate(value) {
   for (const key of ['hideOnBlur', 'hideOnMouseLeave', 'notchHover', 'notchApprovals', 'compactApprovals', 'hideTrayIcon']) {
     if (typeof result[key] !== 'boolean') throw new TypeError(`Invalid ${key}`)
   }
+  if (!['auto', 'en', 'zh-CN'].includes(result.language)) throw new TypeError('Invalid language')
   if (result.hideTrayIcon && !result.notchHover) throw new TypeError('Hiding the menu icon requires notch hover')
   if (result.compactApprovals && !result.notchApprovals) throw new TypeError('Compact approvals require notch approvals')
   return result

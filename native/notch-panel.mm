@@ -392,14 +392,16 @@ static napi_value hideApproval(napi_env env, napi_callback_info info) {
 }
 
 static napi_value updateApprovalQueue(napi_env env, napi_callback_info info) {
-  size_t count = 1; napi_value args[1];
+  size_t count = 2; napi_value args[2];
   napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
   int32_t pending = 0;
-  if (count == 1) napi_get_value_int32(env, args[0], &pending);
+  if (count >= 1) napi_get_value_int32(env, args[0], &pending);
+  NSString* locale = count >= 2 ? stringValue(env, args[1]) : @"en";
+  BOOL chinese = [locale hasPrefix:@"zh"];
   if (approvalHeading && approvalBaseTitle) {
     approvalHeading.stringValue = pending > 0 ? approvalCompact
-      ? [NSString stringWithFormat:@"待审批 +%d", pending]
-      : [NSString stringWithFormat:@"%@ · 后续 %d 条", approvalBaseTitle, pending]
+      ? [NSString stringWithFormat:chinese ? @"待审批 +%d" : @"Pending +%d", pending]
+      : [NSString stringWithFormat:chinese ? @"%@ · 后续 %d 条" : @"%@ · %d more", approvalBaseTitle, pending]
       : approvalBaseTitle;
   }
   return metrics(env, info);

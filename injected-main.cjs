@@ -28,7 +28,16 @@
   let disposed = false
   let suppressStartupWindow = true
   let options = { maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-    notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false }
+    notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false, language: 'auto' }
+  const language = () => options.language === 'auto'
+    ? (app.getLocale().toLowerCase().startsWith('zh') ? 'zh-CN' : 'en') : options.language
+  const words = () => language() === 'zh-CN'
+    ? { session: '会话', reject: '拒绝', review: '查看详情', allow: '允许一次', approve: '允许工具执行吗？',
+      preview: '审批弹窗预览', previewDetail: '这是示例审批卡片。选择任何按钮都不会授权任务。',
+      open: '打开 DeepSeek Harness', quit: '退出 DeepSeek Harness' }
+    : { session: 'Session', reject: 'Reject', review: 'Review details', allow: 'Allow once', approve: 'Approve tool access?',
+      preview: 'Approval preview', previewDetail: 'This is a sample approval card. No choice will authorize a task.',
+      open: 'Open DeepSeek Harness', quit: 'Quit DeepSeek Harness' }
   let hoverTimer
   let nativeEventTimer
   let nextNativeApprovalId = 0
@@ -328,7 +337,7 @@
       updateIndicator()
       showNextApproval()
     })
-    if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length)
+    if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length, language())
   }
 
   function queueApproval(socket, id, title, message, buttons) {
@@ -336,7 +345,7 @@
       approvalQueue.push({ socket, id, title, message, buttons, resolve })
       updateIndicator()
       showNextApproval()
-      if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length)
+      if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length, language())
     })
   }
 
@@ -344,7 +353,7 @@
     const pending = approvalQueue.findIndex(item => item.socket === socket && item.id === targetId)
     if (pending !== -1) approvalQueue.splice(pending, 1)[0].resolve(0)
     updateIndicator()
-    if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length)
+    if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length, language())
     if (activeApproval?.socket === socket && activeApproval.id === targetId) {
       if (nativeAvailable()) nativePanel.hideApproval()
       else if (approvalPanel && !approvalPanel.isDestroyed()) approvalPanel.close()
@@ -362,9 +371,9 @@
     tray.on('click', () => toggleWindow('tray'))
     tray.on('right-click', () => {
       tray.popUpContextMenu(Menu.buildFromTemplate([
-        { label: 'Open DeepSeek Harness', click: openFullWindow },
+        { label: words().open, click: openFullWindow },
         { type: 'separator' },
-        { label: 'Quit DeepSeek Harness', click: () => app.quit() },
+        { label: words().quit, click: () => app.quit() },
       ]))
     })
   }
@@ -396,7 +405,8 @@
     }
     if (request.method === 'preview-approval') {
       if (activeApproval || approvalQueue.length) return { preview: false }
-      void islandApproval('审批弹窗预览', '这是示例审批卡片。选择任何按钮都不会授权任务。', ['拒绝', '查看详情', '允许一次'], true)
+      const w = words()
+      void islandApproval(w.preview, w.previewDetail, [w.reject, w.review, w.allow], true)
         .catch(error => console.error('dsh-macos-menu-bar: approval preview failed', error))
       return { preview: true }
     }
@@ -406,11 +416,12 @@
         || !Number.isInteger(next.maxHeight) || next.maxHeight < 600 || next.maxHeight > 1200
         || ['hideOnBlur', 'hideOnMouseLeave', 'notchHover', 'notchApprovals', 'compactApprovals', 'hideTrayIcon'].some(key => typeof next[key] !== 'boolean')
         || next.hideTrayIcon && !next.notchHover
-        || next.compactApprovals && !next.notchApprovals) return { outcome: 'unavailable' }
+        || next.compactApprovals && !next.notchApprovals
+        || !['auto', 'en', 'zh-CN'].includes(next.language)) return { outcome: 'unavailable' }
       options = { maxWidth: next.maxWidth, maxHeight: next.maxHeight, hideOnBlur: next.hideOnBlur,
         hideOnMouseLeave: next.hideOnMouseLeave,
         notchHover: next.notchHover, notchApprovals: next.notchApprovals,
-        compactApprovals: next.compactApprovals, hideTrayIcon: next.hideTrayIcon }
+        compactApprovals: next.compactApprovals, hideTrayIcon: next.hideTrayIcon, language: next.language }
       if (app.isReady()) { configureTray(); configureHover(); configurePopupMouseTracking() }
       return { configured: true }
     }
@@ -422,12 +433,12 @@
         || request.labels.some(label => typeof label !== 'string' || label.length === 0 || label.length > 200)) {
         return { outcome: 'unavailable' }
       }
-      const language = app.getLocale().toLowerCase().split(/[-_]/u)[0]
+      const activeLanguage = language() === 'zh-CN' ? 'zh' : 'en'
       const display = request.display
       const session = typeof request.sessionId === 'string' && request.sessionId.length <= 200
-        ? `\n会话 ${request.sessionId.slice(-8)}` : ''
+        ? `\n${words().session} ${request.sessionId.slice(-8)}` : ''
       const localize = value => typeof value === 'object' && value !== null
-        ? typeof value[language] === 'string' ? value[language] : value.en
+        ? typeof value[activeLanguage] === 'string' ? value[activeLanguage] : value.en
         : undefined
       try {
         const buttons = [request.labels[0], localize(display?.approve) || request.labels[1],
@@ -449,16 +460,16 @@
       || (request.reason !== undefined && (typeof request.reason !== 'string' || request.reason.length > 4000))) {
       return { outcome: 'unavailable' }
     }
-    const chinese = app.getLocale().toLowerCase().startsWith('zh')
+    const w = words()
     const session = typeof request.sessionId === 'string' && request.sessionId.length <= 200
-      ? `\n${chinese ? '会话' : 'Session'} ${request.sessionId.slice(-8)}` : ''
+      ? `\n${w.session} ${request.sessionId.slice(-8)}` : ''
     try {
-      const buttons = chinese ? ['拒绝', '查看详情', '允许一次'] : ['Reject', 'Review details', 'Allow once']
+      const buttons = [w.reject, w.review, w.allow]
       const result = options.notchApprovals && internalDisplay()
-        ? { response: await queueApproval(socket, request.id, chinese ? '允许工具执行吗？' : 'Approve tool access?',
+        ? { response: await queueApproval(socket, request.id, w.approve,
           `${request.toolName}${request.reason ? '\n' + request.reason : ''}${session}`, buttons) }
         : await dialog.showMessageBox({ type: 'question',
-        title: chinese ? '允许工具执行吗？' : 'Approve tool access?',
+        title: w.approve,
         message: request.toolName, detail: request.reason || '',
         buttons,
         defaultId: 0, cancelId: 0,

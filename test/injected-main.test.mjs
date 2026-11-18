@@ -142,7 +142,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
       peer.once('data', chunk => resolve(JSON.parse(chunk.toString())))
       peer.write(JSON.stringify({ token: 'secret', id: 4, method: 'configure', settings: {
         maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-        notchHover: false, notchApprovals: true, compactApprovals: false, hideTrayIcon: false,
+        notchHover: false, notchApprovals: true, compactApprovals: false, hideTrayIcon: false, language: 'zh-CN',
       } }) + '\n')
     })
     assert.equal(configured.configured, true)
@@ -150,6 +150,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     peer.write(JSON.stringify({ token: 'secret', id: 5, method: 'approve', toolName: 'bash', sessionId: 'session-one' }) + '\n')
     for (let attempt = 0; attempt < 100 && !island?.url; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
     assert.ok(island?.url.startsWith('data:text/html'))
+    assert.match(decodeURIComponent(island.url), /允许工具执行吗？/u, 'manual Chinese selection localizes approvals')
     const firstIsland = island
     peer.write(JSON.stringify({ token: 'secret', id: 6, method: 'approve', toolName: 'write', sessionId: 'session-two' }) + '\n')
     await new Promise(resolve => setTimeout(resolve, 10))
@@ -174,9 +175,14 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     const hoverConfigured = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
     peer.write(JSON.stringify({ token: 'secret', id: 8, method: 'configure', settings: {
       maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-      notchHover: true, notchApprovals: false, compactApprovals: false, hideTrayIcon: false,
+      notchHover: true, notchApprovals: false, compactApprovals: false, hideTrayIcon: false, language: 'en',
     } }) + '\n')
     assert.equal((await hoverConfigured).configured, true)
+    const englishPreview = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
+    peer.write(JSON.stringify({ token: 'secret', id: 9, method: 'preview-approval' }) + '\n')
+    assert.equal((await englishPreview).preview, true)
+    assert.match(decodeURIComponent(island.url), /Approval preview/u, 'manual English selection localizes the preview')
+    island.close()
     window.hide()
     cursor = { x: 610, y: 10 }
     timers.find(timer => timer.delay === 120).callback()

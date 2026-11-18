@@ -18,6 +18,8 @@ test('settings persist per DSH home and keep a reachable entry point', async () 
     assert.throws(() => validate({ ...next, maxWidth: 200 }), /Invalid maxWidth/)
     assert.throws(() => validate({ ...next, maxHeight: 480 }), /Invalid maxHeight/)
     assert.throws(() => validate({ ...next, compactApprovals: true }), /require notch approvals/)
+    assert.throws(() => validate({ ...next, language: 'fr' }), /Invalid language/)
+    assert.equal(validate({ ...next, language: 'en' }).language, 'en')
     await writeFile(join(directory, 'macos-menu-bar.json'), JSON.stringify({ ...next, maxHeight: 480 }))
     assert.equal((await readSettings()).maxHeight, 600)
   } finally {
