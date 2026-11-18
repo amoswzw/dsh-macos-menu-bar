@@ -10,7 +10,7 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 ![菜单栏、刘海入口、审批与设置的动画演示](https://raw.githubusercontent.com/amoswzw/dsh-macos-menu-bar/main/docs/screenshots/demo.gif)
 
-动画由插件界面截图编排；其中审批卡片是预览，选择按钮不会授权任务。
+动画在桌面布局示意中展示插件界面截图；其中审批卡片是预览，选择按钮不会授权任务。
 
 ## 截图
 
