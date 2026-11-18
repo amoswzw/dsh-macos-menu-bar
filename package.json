@@ -1,6 +1,6 @@
 {
   "name": "@amoswzw/dsh-macos-menu-bar",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A DeepSeek Harness Desktop plugin for macOS menu bar access and native approvals",
   "author": "Amos W (https://github.com/amoswzw)",
   "type": "module",

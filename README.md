@@ -6,11 +6,11 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 这是独立的社区插件，并非 DeepSeek 官方产品。插件运行时读取用户已安装的 Desktop 图标；仓库和发布包不包含 DeepSeek 的图标文件。
 
-插件类别：**UI & Experience**。仅支持 macOS 的 **Desktop** profile；请勿按 Web profile 的通用安装示例安装。
+插件类别：**UI & Experience**。仅支持 macOS 的 **Desktop** profile；请勿按 Web profile 的通用安装示例安装。已向 [DSH Plugin Hub](https://github.com/dshplugin/dsh-plugin-hub) 提交收录，收录后可在插件市场一键安装。
 
 ![菜单栏、刘海入口、审批与设置的动画演示](https://raw.githubusercontent.com/amoswzw/dsh-macos-menu-bar/main/docs/screenshots/demo.gif)
 
-动画在桌面布局示意中展示插件界面截图；其中审批卡片是预览，选择按钮不会授权任务。
+动画为安装版 Desktop 的真实界面录制：悬停刘海弹出主窗口、设置页切换语言、预览审批卡片（悬停可展开详情，选择按钮不会授权任务）、失焦自动收起，以及菜单栏图标的右键菜单。
 
 ## 截图
 
@@ -28,19 +28,44 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 ## 兼容性与安装
 
-需要 macOS、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。先完全退出正在运行的 Desktop，再从 GitHub 安装包含语言切换的当前源码：
+需要 macOS、Node.js 22+、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`（`engines.dsh` 已声明该范围，覆盖 rc.3、rc.4 及后续 0.2.2 正式版；运行中的 DSH 不满足范围时会直接拒绝安装）。安装前先完全退出正在运行的 Desktop。
+
+**方式一：npm 安装（推荐）**
 
 ```sh
 DSH_CLI="/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh"
-"$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar
+"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar
 open -a "/Applications/DeepSeek Harness.app"
 ```
 
-克隆仓库后，也可运行 `./install.sh`；脚本默认从 GitHub 源码安装。传入包名可改用 npm，例如 `./install.sh @amoswzw/dsh-macos-menu-bar@0.1.0`；传入 `.` 则从本地仓库安装。如果 DSH 安装在其他位置，可设置 `DSH_CLI=/path/to/dsh`。脚本只安装插件，不会自动重启正在运行的 Desktop。
+不带版本号即安装 npm `latest`。注意：刚发布、尚未超过 DSH 供应链 `minimumReleaseAge` 策略时限的新版本会被自动降级到上一个已放行的版本；如需立即装最新版，请显式指定版本号（例如 `@amoswzw/dsh-macos-menu-bar@0.1.2`）。本插件已向 DSH Plugin Hub（[dsh-plugin.org](https://dsh-plugin.org)）提交收录；收录后可在 Desktop 内的「插件市场」一键安装。市场自定义安装只接受 npm 包名，不支持 GitHub 源码。
 
-已发布的 npm `0.1.0` 可用 `"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar@0.1.0` 安装，但它早于语言切换功能。也可把 GitHub 来源固定到某次提交：`github:amoswzw/dsh-macos-menu-bar#<commit-sha>`。安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
+**方式二：GitHub 源码安装**
 
-English quick start: this plugin requires macOS and DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`. Quit Desktop completely, run the GitHub installation commands above, and reopen the app. Open **Menu Bar & Island** in the DSH sidebar to choose **Follow system**, **English**, or **简体中文**. The npm `0.1.0` release predates the language selector.
+本插件无需构建，GitHub 安装始终可用，能拿到仓库最新功能：
+
+```sh
+"$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar
+```
+
+也可固定到某次提交：`github:amoswzw/dsh-macos-menu-bar#<commit-sha>`。
+
+**方式三：`./install.sh`**
+
+克隆仓库后运行 `./install.sh`，脚本默认从 GitHub 源码安装。传入包名可改用 npm，例如 `./install.sh @amoswzw/dsh-macos-menu-bar@0.1.2`；传入 `.` 则从本地仓库安装。如果 DSH 安装在其他位置，可设置 `DSH_CLI=/path/to/dsh`。脚本只安装插件，不会自动重启正在运行的 Desktop。
+
+安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
+
+English quick start: requires macOS, Node.js 22+, and DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`. Quit Desktop completely, then run the npm install commands above (or install from GitHub source for the newest features) and reopen the app. Open **Menu Bar & Island** in the DSH sidebar to choose **Follow system**, **English**, or **简体中文**. The plugin has been submitted to [DSH Plugin Hub](https://github.com/dshplugin/dsh-plugin-hub); once listed, it can be installed with one click from the in-app plugin market.
+
+更新到最新发布版（`add` 不会覆盖已安装的版本）：
+
+```sh
+"$DSH_CLI" plugin --profile desktop update @amoswzw/dsh-macos-menu-bar
+# 或卸载后重装：
+"$DSH_CLI" plugin --profile desktop remove @amoswzw/dsh-macos-menu-bar
+"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar
+```
 
 卸载：
 
@@ -84,7 +109,7 @@ npm pack --dry-run
 "$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar#<commit-sha>
 ```
 
-`0.1.0` 已发布在 [npm](https://www.npmjs.com/package/@amoswzw/dsh-macos-menu-bar)。以后发布新版本时先提高 `package.json` 版本号、运行测试和打包检查，再执行 `npm publish --access public`；npm 不允许重新发布同名同版本。官方[插件索引文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/plugin-market.md)还提供可选的 Discover 索引发布方式；GitHub 或 npm 发布本身不要求创建索引。
+`0.1.2` 已发布在 [npm](https://www.npmjs.com/package/@amoswzw/dsh-macos-menu-bar)。以后发布新版本时先提高 `package.json` 版本号、运行测试和打包检查，再执行 `npm publish --access public`；npm 不允许重新发布同名同版本。发布新版后，请同步更新 [DSH Plugin Hub 的收录 issue](https://github.com/dshplugin/dsh-plugin-hub/issues/826) 中的安装命令与兼容性说明。DSH 新版本（例如 0.2.3）发布后，先在兼容版本上复测插件行为，再扩大 `engines.dsh` 范围。官方[插件索引文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/plugin-market.md)还提供可选的 Discover 索引发布方式；GitHub 或 npm 发布本身不要求创建索引。
 
 ## 实现
 
