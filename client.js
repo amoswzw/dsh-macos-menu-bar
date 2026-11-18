@@ -19,7 +19,47 @@ window.__ModuleLoader__.load({
         h('iframe', { title: label(), src: '/macos-menu-bar/settings.html',
           style: { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0, display: 'block' } }))
     }
-    return { inject: [], apply(ctx) {
+    return { inject: ['uiWorkspace'], apply(ctx) {
+      ctx.effect(() => {
+        let stopped = false
+        let pending = window.__dshMacosMenuBarPendingReviewSession
+        let timer
+        let attempts = 0
+        const openPending = () => {
+          if (stopped || typeof pending !== 'string' || !pending) return
+          let workspace
+          try { workspace = ctx.get('uiWorkspace') || ctx.uiWorkspace } catch { workspace = ctx.uiWorkspace }
+          if (typeof workspace?.openSession !== 'function') {
+            if (++attempts < 40) timer = setTimeout(openPending, 50)
+            else {
+              if (window.__dshMacosMenuBarPendingReviewSession === pending) {
+                delete window.__dshMacosMenuBarPendingReviewSession
+              }
+              pending = undefined
+              console.warn('macos-menu-bar: approval session navigation unavailable')
+            }
+            return
+          }
+          const sessionId = pending
+          pending = undefined
+          try {
+            workspace.openSession(sessionId)
+            if (window.__dshMacosMenuBarPendingReviewSession === sessionId) {
+              delete window.__dshMacosMenuBarPendingReviewSession
+            }
+          } catch (error) { console.warn('macos-menu-bar: approval session navigation failed', error) }
+        }
+        const onReview = event => {
+          if (typeof event.detail !== 'string' || !event.detail || event.detail.length > 200) return
+          pending = event.detail
+          attempts = 0
+          clearTimeout(timer)
+          openPending()
+        }
+        window.addEventListener('dsh-macos-menu-bar:review-session', onReview)
+        openPending()
+        return () => { stopped = true; clearTimeout(timer); window.removeEventListener('dsh-macos-menu-bar:review-session', onReview) }
+      }, 'macos-menu-bar: review session navigation')
       ctx.effect(() => {
         let stopped = false
         let timer

@@ -41,7 +41,8 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     showInactive() { visible = true; calls.push(['showInactive']) }
   }
   const window = Object.assign(new FakeBrowserWindow(), {
-    webContents: { getURL: () => 'dsh-app://app/' },
+    webContents: { getURL: () => 'dsh-app://app/',
+      executeJavaScript: async source => { calls.push(['script', source]) } },
     isDestroyed: () => false, isVisible: () => visible, isFocused: () => false,
     isMinimized: () => false, isFullScreen: () => false,
     getBounds: () => ({ x: 10, y: 20, width: 1280, height: 820 }),
@@ -137,9 +138,12 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     const review = await new Promise((resolve, reject) => {
       peer.once('data', chunk => resolve(JSON.parse(chunk.toString())))
       peer.once('error', reject)
-      peer.write(JSON.stringify({ token: 'secret', id: 2, method: 'approve', toolName: 'bash' }) + '\n')
+      peer.write(JSON.stringify({ token: 'secret', id: 2, method: 'approve', toolName: 'bash',
+        sessionId: 'session-one' }) + '\n')
     })
     assert.equal(review.outcome, 'review')
+    assert.match(calls.filter(([kind]) => kind === 'script').at(-1)[1], /session-one/u,
+      'review selects the session belonging to this approval')
     assert.equal(window.isVisible(), true, 'review opens the existing Desktop window')
     assert.deepEqual(calls.filter(([kind]) => kind === 'top').at(-1), ['top', true],
       'review keeps the Desktop window floating')
@@ -200,7 +204,8 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     island.webContents.emit('will-navigate', { preventDefault() {} }, 'dsh-menu-choice://select/0')
     assert.equal((await secondReply).outcome, 'rejected')
     const reviewReply = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
-    peer.write(JSON.stringify({ token: 'secret', id: 10, method: 'approve', toolName: 'bash' }) + '\n')
+    peer.write(JSON.stringify({ token: 'secret', id: 10, method: 'approve', toolName: 'bash',
+      sessionId: 'session-two' }) + '\n')
     const previousIsland = island
     for (let attempt = 0; attempt < 100 && island === previousIsland; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
     const reviewCard = island
@@ -209,6 +214,8 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     assert.equal(island, reviewCard, 'the second request must not replace the first approval')
     reviewCard.webContents.emit('will-navigate', { preventDefault() {} }, 'dsh-menu-choice://select/1')
     assert.equal((await reviewReply).outcome, 'review')
+    assert.match(calls.filter(([kind]) => kind === 'script').at(-1)[1], /session-two/u,
+      'the second review navigates to its own session')
     assert.equal(island, reviewCard, 'the next approval waits while Desktop reviews the first')
     assert.equal(window.isVisible(), true, 'review keeps the first approval in the floating Desktop window')
     window.emit('blur')

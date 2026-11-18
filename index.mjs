@@ -220,7 +220,7 @@ export async function apply(ctx) {
     const command = linkedCall?.toolName === request.toolName ? linkedCall.detail : undefined
     const reply = await client.request('approve', {
       toolName: request.toolName,
-      ...(typeof request.agent?.id === 'string' ? { sessionId: request.agent.id } : {}),
+      ...(typeof request.agent?.session?.id === 'string' ? { sessionId: request.agent.session.id } : {}),
       ...(request.reason === undefined ? {} : { reason: request.reason }),
       ...(typeof command === 'string' ? { command } : {}),
       ...(request.displayReason === undefined ? {} : { displayReason: {
@@ -246,7 +246,7 @@ export async function apply(ctx) {
     const labels = [intent.reject, intent.approve, ...(intent.always === undefined ? [] : [intent.always])]
     const reply = await client.request('question-approval', {
       question: question.question,
-      ...(typeof request.agent?.id === 'string' ? { sessionId: request.agent.id } : {}),
+      ...(typeof request.agent?.session?.id === 'string' ? { sessionId: request.agent.session.id } : {}),
       ...(question.detail === undefined ? {} : { detail: question.detail }),
       labels,
       ...(intent.display === undefined ? {} : { display: intent.display }),

@@ -229,9 +229,16 @@
     window.once('blur', popupBlurHandler)
   }
 
-  function openReviewWindow() {
+  function openReviewWindow(sessionId) {
     toggleWindow(options.notchHover && internalDisplay() ? 'notch' : 'tray', true)
     popupMouseGraceUntil = Date.now() + 1200
+    if (typeof sessionId !== 'string' || sessionId.length === 0 || sessionId.length > 200) return
+    const contents = primaryWindow()?.webContents
+    if (typeof contents?.executeJavaScript !== 'function') return
+    const script = `window.__dshMacosMenuBarPendingReviewSession = ${JSON.stringify(sessionId)}; window.dispatchEvent(new CustomEvent('dsh-macos-menu-bar:review-session', { detail: window.__dshMacosMenuBarPendingReviewSession }))`
+    void contents.executeJavaScript(script).catch(error => {
+      console.warn('dsh-macos-menu-bar: could not select approval session', error)
+    })
   }
 
   function notchAnchor() {
@@ -541,7 +548,7 @@
         buttons,
         defaultId: 0, cancelId: 0,
       })
-      if (result.response === 1) { openReviewWindow(); return { outcome: 'review' } }
+      if (result.response === 1) { openReviewWindow(request.sessionId); return { outcome: 'review' } }
       return { outcome: result.response === 2 ? 'allowed-once' : 'rejected' }
     } catch { return { outcome: 'unavailable' } }
     finally { approvalPresentationCount-- }

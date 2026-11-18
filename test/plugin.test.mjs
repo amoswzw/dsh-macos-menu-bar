@@ -88,6 +88,7 @@ test('indicator follows actual agent status changes', async () => {
 test('approval card receives the correlated command and localized reason', async () => {
   const harness = await fixture((request, peer) => {
     assert.equal(request.command, 'echo hello')
+    assert.equal(request.sessionId, 'session-a')
     assert.deepEqual(request.displayReason, { en: 'Run a command', zh: '执行命令' })
     peer.write(JSON.stringify({ id: request.id, outcome: 'rejected' }) + '\n')
   })
@@ -97,7 +98,8 @@ test('approval card receives the correlated command and localized reason', async
       name: 'bash', callId: 'call-a', arguments: JSON.stringify({ command: 'echo hello' }),
     } })
     const result = await harness.ctx.listener({ toolName: 'bash', callId: 'call-a',
-      agent: { session: { id: 'session-a' } }, displayReason: { en: 'Run a command', zh: '执行命令' },
+      agent: { id: 'different-agent-id', session: { id: 'session-a' } },
+      displayReason: { en: 'Run a command', zh: '执行命令' },
     })
     assert.equal(result, 'rejected')
   } finally { await harness.close() }
