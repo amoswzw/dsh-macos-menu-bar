@@ -182,7 +182,8 @@
   }
 
   function toggleWindow(anchor = 'tray', forReview = false) {
-    if (!forReview && (approvalPresentationCount || activeApproval || approvalQueue.length)) return
+    if (!forReview && !activeApproval?.reviewing
+      && (approvalPresentationCount || activeApproval || approvalQueue.length)) return
     suppressStartupWindow = true
     const window = primaryWindow()
     if (!window) { app.focus({ steal: true }); return }
@@ -265,10 +266,12 @@
       updateIndicator()
     }
     hoverTimer = setInterval(() => {
-      if (disposed || approvalPresentationCount || activeApproval || approvalQueue.length) return
+      if (disposed || !activeApproval?.reviewing
+        && (approvalPresentationCount || activeApproval || approvalQueue.length)) return
       const point = screen.getCursorScreenPoint()
       if (!contains(notchHitRegion(), point)) { suppressNotchHoverUntilExit = false; return }
-      if (!suppressNotchHoverUntilExit && !primaryWindow()?.isVisible()) toggleWindow('notch')
+      if ((activeApproval?.reviewing || !suppressNotchHoverUntilExit)
+        && !primaryWindow()?.isVisible()) toggleWindow('notch')
     }, 120)
     hoverTimer.unref()
   }

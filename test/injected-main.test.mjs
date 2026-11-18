@@ -211,6 +211,20 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     assert.equal((await reviewReply).outcome, 'review')
     assert.equal(island, reviewCard, 'the next approval waits while Desktop reviews the first')
     assert.equal(window.isVisible(), true, 'review keeps the first approval in the floating Desktop window')
+    window.emit('blur')
+    assert.equal(window.isVisible(), false, 'review may auto-hide while waiting for a Desktop decision')
+    tray.emit('click')
+    assert.equal(window.isVisible(), true, 'the waiting review window can be reopened from the menu bar')
+    window.emit('blur')
+    const reviewHoverConfig = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
+    peer.write(JSON.stringify({ token: 'secret', id: 20, method: 'configure', settings: {
+      maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
+      notchHover: true, notchApprovals: true, compactApprovals: false, hideTrayIcon: false, language: 'zh-CN',
+    } }) + '\n')
+    assert.equal((await reviewHoverConfig).configured, true)
+    cursor = { x: 610, y: 10 }
+    timers.filter(timer => timer.delay === 120).at(-1).callback()
+    assert.equal(window.isVisible(), true, 'the waiting review window can be reopened by notch hover')
     const finishedReview = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
     peer.write(JSON.stringify({ token: 'secret', id: 12, method: 'finish-review', targetId: 10 }) + '\n')
     assert.equal((await finishedReview).finished, true)
