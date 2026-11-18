@@ -4,6 +4,8 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 一个可安装到 DeepSeek Harness Desktop profile 的 macOS 插件。它把**现有 Desktop 窗口**作为菜单栏弹出窗口使用，因此会话、草稿、滚动位置和所有 Desktop 页面都留在同一个渲染进程里。需要审批时，插件默认显示 macOS 原生确认框；拒绝是默认选择。安装后从 Finder、Dock 或应用图标正常启动，插件会自动创建菜单栏图标并隐藏 Desktop 的 Dock 图标。
 
+这是独立的社区插件，并非 DeepSeek 官方产品。插件运行时读取用户已安装的 Desktop 图标；仓库和发布包不包含 DeepSeek 的图标文件。
+
 ## 兼容性与安装
 
 需要 macOS、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。先完全退出正在运行的 Desktop，再从 GitHub 安装：
@@ -89,3 +91,7 @@ DSH_APP_ICON=/path/to/icon.png node test/probe-inspector.mjs
 - 原生刘海审批卡片已在安装的 Desktop 进程中显示并验证收起按拒绝结算；真实 DSH 工具审批尚未端到端触发。
 - 原生刘海面板需要本机能运行 `clang++`；缺少 Xcode Command Line Tools 时，菜单栏入口继续工作，开启刘海审批后会回退到 Electron 卡片，顶部悬停仍使用屏幕中央的命中区域。
 - 插件依赖 DSH Desktop 当前的 Electron 主进程结构和 Node inspector。DSH 更新后应先在兼容版本上复测；`engines.dsh` 目前只声明 0.2.2-rc.3 至 0.2.2，尚未声明支持 0.2.3 及以后版本。
+
+## 许可证
+
+[MIT](LICENSE) © 2026 Amos W (amoswzw)。
