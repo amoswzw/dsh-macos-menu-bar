@@ -33,10 +33,12 @@
     ? (app.getLocale().toLowerCase().startsWith('zh') ? 'zh-CN' : 'en') : options.language
   const words = () => language() === 'zh-CN'
     ? { session: '会话', reject: '拒绝', review: '查看详情', allow: '允许一次', approve: '允许工具执行吗？',
-      preview: '审批弹窗预览', previewDetail: '这是示例审批卡片。选择任何按钮都不会授权任务。',
+      preview: '审批弹窗预览', previewCommand: 'git status --short',
+      previewDetail: '这是示例审批卡片。选择任何按钮都不会授权任务。',
       open: '打开 DeepSeek Harness', quit: '退出 DeepSeek Harness' }
     : { session: 'Session', reject: 'Reject', review: 'Review details', allow: 'Allow once', approve: 'Approve tool access?',
-      preview: 'Approval preview', previewDetail: 'This is a sample approval card. No choice will authorize a task.',
+      preview: 'Approval preview', previewCommand: 'git status --short',
+      previewDetail: 'This is a sample approval card. No choice will authorize a task.',
       open: 'Open DeepSeek Harness', quit: 'Quit DeepSeek Harness' }
   let hoverTimer
   let nativeEventTimer
@@ -45,6 +47,7 @@
   let approvalPanel
   let activeApproval
   const approvalQueue = []
+  let approvalPresentationCount = 0
   let runningCount = 0
   const displayChanged = () => { configureTray(); configureHover() }
   const originalShow = BrowserWindow.prototype.show
@@ -153,6 +156,13 @@
     window.focus()
   }
 
+  function prepareApprovalPresentation() {
+    const window = popupWindow
+    if (!window || window.isDestroyed()) return
+    if (window.isVisible()) window.hide()
+    restoreWindow()
+  }
+
   function activatePopup(window) {
     let attempts = 0
     const check = () => {
@@ -167,6 +177,7 @@
   }
 
   function toggleWindow(anchor = 'tray') {
+    if (approvalPresentationCount || activeApproval || approvalQueue.length) return
     suppressStartupWindow = true
     const window = primaryWindow()
     if (!window) { app.focus({ steal: true }); return }
@@ -243,7 +254,7 @@
       updateIndicator()
     }
     hoverTimer = setInterval(() => {
-      if (disposed) return
+      if (disposed || approvalPresentationCount || activeApproval || approvalQueue.length) return
       const point = screen.getCursorScreenPoint()
       if (contains(notchHitRegion(), point) && !primaryWindow()?.isVisible()) toggleWindow('notch')
     }, 120)
@@ -403,10 +414,14 @@
       return { cancelled: true }
     }
     if (request.method === 'preview-approval') {
-      if (activeApproval || approvalQueue.length) return { preview: false }
+      if (approvalPresentationCount || activeApproval || approvalQueue.length) return { preview: false }
+      prepareApprovalPresentation()
+      approvalPresentationCount++
       const w = words()
-      void islandApproval(w.preview, w.previewDetail, [w.reject, w.review, w.allow], true)
+      void islandApproval(options.compactApprovals ? 'bash' : w.preview,
+        `${w.previewCommand}\n${w.previewDetail}`, [w.reject, w.review, w.allow], true)
         .catch(error => console.error('dsh-macos-menu-bar: approval preview failed', error))
+        .finally(() => { approvalPresentationCount-- })
       return { preview: true }
     }
     if (request.method === 'configure') {
@@ -433,6 +448,8 @@
         return { outcome: 'unavailable' }
       }
       const activeLanguage = language() === 'zh-CN' ? 'zh' : 'en'
+      prepareApprovalPresentation()
+      approvalPresentationCount++
       const display = request.display
       const session = typeof request.sessionId === 'string' && request.sessionId.length <= 200
         ? `\n${words().session} ${request.sessionId.slice(-8)}` : ''
@@ -453,29 +470,44 @@
         })
         return { selected: request.labels[result.response] || request.labels[0] }
       } catch { return { outcome: 'unavailable' } }
+      finally { approvalPresentationCount-- }
     }
     if (request.method !== 'approve') return { outcome: 'unavailable' }
+    const displayReason = request.displayReason
+    const validDisplayReason = displayReason === undefined || (displayReason !== null
+      && typeof displayReason === 'object' && !Array.isArray(displayReason)
+      && ['en', 'zh'].every(key => displayReason[key] === undefined
+        || typeof displayReason[key] === 'string' && displayReason[key].length <= 4000))
     if (typeof request.toolName !== 'string' || request.toolName.length === 0 || request.toolName.length > 200
-      || (request.reason !== undefined && (typeof request.reason !== 'string' || request.reason.length > 4000))) {
+      || (request.reason !== undefined && (typeof request.reason !== 'string' || request.reason.length > 4000))
+      || (request.command !== undefined && (typeof request.command !== 'string' || request.command.length > 4000))
+      || !validDisplayReason) {
       return { outcome: 'unavailable' }
     }
     const w = words()
+    const reason = displayReason?.[language() === 'zh-CN' ? 'zh' : 'en'] || request.reason || ''
     const session = typeof request.sessionId === 'string' && request.sessionId.length <= 200
-      ? `\n${w.session} ${request.sessionId.slice(-8)}` : ''
+      ? `${w.session} ${request.sessionId.slice(-8)}` : ''
+    const details = [request.toolName, request.command, reason, session].filter(Boolean).join('\n')
+    const compactSummary = [request.command || reason || request.toolName,
+      ...(request.command && reason ? [reason] : []), session].filter(Boolean).join('\n')
+    prepareApprovalPresentation()
+    approvalPresentationCount++
     try {
       const buttons = [w.reject, w.review, w.allow]
       const result = options.notchApprovals && internalDisplay()
-        ? { response: await queueApproval(socket, request.id, w.approve,
-          `${request.toolName}${request.reason ? '\n' + request.reason : ''}${session}`, buttons) }
+        ? { response: await queueApproval(socket, request.id, options.compactApprovals ? request.toolName : w.approve,
+          options.compactApprovals ? compactSummary : details, buttons) }
         : await dialog.showMessageBox({ type: 'question',
         title: w.approve,
-        message: request.toolName, detail: request.reason || '',
+        message: request.toolName, detail: [request.command, reason].filter(Boolean).join('\n'),
         buttons,
         defaultId: 0, cancelId: 0,
       })
       if (result.response === 1) { openFullWindow(); return { outcome: 'review' } }
       return { outcome: result.response === 2 ? 'allowed-once' : 'rejected' }
     } catch { return { outcome: 'unavailable' } }
+    finally { approvalPresentationCount-- }
   }
 
   const server = net.createServer(socket => {

@@ -35,12 +35,17 @@ async function fixture(onApproval) {
   const previous = { socket: process.env.DSH_MENU_BAR_SOCKET, token: process.env.DSH_MENU_BAR_TOKEN }
   process.env.DSH_MENU_BAR_SOCKET = socketPath
   process.env.DSH_MENU_BAR_TOKEN = 'test-token'
-  const ctx = { listener: undefined, questionListener: undefined, cleanup: undefined, agentListeners: new Map(),
+  const ctx = { listener: undefined, questionListener: undefined, sessionEvent: undefined,
+    cleanup: undefined, agentListeners: new Map(),
     get(name) { return name === 'agents' ? { list: () => [] } : undefined },
     webServer: { register() { return () => {} } },
     effect(cleanup, label) { const stop = cleanup(); if (label === 'macos-menu-bar: native connection') this.cleanup = stop },
     on(name, listener, options) {
       if (name.startsWith('agent/')) this.agentListeners.set(name, listener)
+      else if (name === 'session/event') {
+        assert.equal(options.global, true)
+        this.sessionEvent = listener
+      }
       else {
         assert.equal(options.prepend, true)
         if (name === 'approval/request') this.listener = listener
@@ -72,6 +77,24 @@ test('indicator follows actual agent status changes', async () => {
     harness.ctx.agentListeners.get('agent/status')({ agent, status: 'idle' })
     await new Promise(resolve => setTimeout(resolve, 5))
     assert.deepEqual(harness.activities, [0, 1, 0])
+  } finally { await harness.close() }
+})
+
+test('approval card receives the correlated command and localized reason', async () => {
+  const harness = await fixture((request, peer) => {
+    assert.equal(request.command, 'echo hello')
+    assert.deepEqual(request.displayReason, { en: 'Run a command', zh: '执行命令' })
+    peer.write(JSON.stringify({ id: request.id, outcome: 'rejected' }) + '\n')
+  })
+  try {
+    await apply(harness.ctx)
+    harness.ctx.sessionEvent({ id: 'session-a' }, { type: 'tool/call', data: {
+      name: 'bash', callId: 'call-a', arguments: JSON.stringify({ command: 'echo hello' }),
+    } })
+    const result = await harness.ctx.listener({ toolName: 'bash', callId: 'call-a',
+      agent: { session: { id: 'session-a' } }, displayReason: { en: 'Run a command', zh: '执行命令' },
+    })
+    assert.equal(result, 'rejected')
   } finally { await harness.close() }
 })
 

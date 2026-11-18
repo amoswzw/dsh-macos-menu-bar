@@ -116,6 +116,23 @@ class MenuBarConnection {
  */
 export async function apply(ctx) {
   if (process.platform !== 'darwin') return
+  const recentCommands = new Map()
+  ctx.on('session/event', (session, event) => {
+    if (event?.type !== 'tool/call' || !['bash', 'terminal_send'].includes(event.data?.name)
+      || typeof event.data?.arguments !== 'string' || event.data.arguments.length > 100_000) return
+    let args
+    try { args = JSON.parse(event.data.arguments) } catch { return }
+    const command = event.data.name === 'terminal_send' ? args?.text : args?.command
+    if (typeof command !== 'string' || !command.trim()) return
+    let calls = recentCommands.get(session.id)
+    if (!calls) {
+      calls = new Map()
+      recentCommands.set(session.id, calls)
+      if (recentCommands.size > 100) recentCommands.delete(recentCommands.keys().next().value)
+    }
+    calls.set(event.data.callId, command.slice(0, 4000))
+    if (calls.size > 32) calls.delete(calls.keys().next().value)
+  }, { global: true })
   let client
   ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: '/macos-menu-bar/settings.html', handler: async (req, res) => {
     if (!requireLocal(req, res)) return
@@ -193,10 +210,16 @@ export async function apply(ctx) {
     client.close()
   }, 'macos-menu-bar: native connection')
   ctx.on('approval/request', async (request, next) => {
+    const command = recentCommands.get(request.agent?.session?.id)?.get(request.callId)
     const reply = await client.request('approve', {
       toolName: request.toolName,
       ...(typeof request.agent?.id === 'string' ? { sessionId: request.agent.id } : {}),
       ...(request.reason === undefined ? {} : { reason: request.reason }),
+      ...(typeof command === 'string' ? { command } : {}),
+      ...(request.displayReason === undefined ? {} : { displayReason: {
+        ...(typeof request.displayReason.en === 'string' ? { en: request.displayReason.en.slice(0, 4000) } : {}),
+        ...(typeof request.displayReason.zh === 'string' ? { zh: request.displayReason.zh.slice(0, 4000) } : {}),
+      } }),
     }, request.signal)
     if (reply.outcome === 'review') return request.signal?.aborted ? 'cancelled' : next()
     return outcomes.has(reply.outcome) ? reply.outcome : 'unavailable'

@@ -16,6 +16,7 @@ test('remote clients cannot load settings or trigger an approval preview', async
   const ctx = {
     webServer: { register(route) { routes.set(route.path, route); return () => {} } },
     effect(register) { register() },
+    on() {},
   }
   await apply(ctx)
   assert.equal(routes.size, 3)

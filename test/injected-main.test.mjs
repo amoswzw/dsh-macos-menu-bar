@@ -33,6 +33,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
         this.isDestroyed = () => false
         this.close = () => this.emit('closed')
         this.focus = () => {}
+        this.show = () => calls.push(['island-show'])
       }
     }
     static getAllWindows() { return [window] }
@@ -117,6 +118,10 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     tray.menu[0].click()
     assert.ok(calls.some(([kind, value]) => kind === 'bounds' && value.width === 1280))
 
+    tray.emit('click')
+    assert.equal(window.isVisible(), true)
+    const focusBeforeApproval = focusCount()
+
     const peer = createConnection(socketPath)
     const reply = await new Promise((resolve, reject) => {
       peer.once('connect', () => peer.write(JSON.stringify({ token: 'secret', id: 1, method: 'approve', toolName: 'bash' }) + '\n'))
@@ -124,6 +129,10 @@ test('menu bar uses the existing renderer and native approval fails closed by de
       peer.once('error', reject)
     })
     assert.equal(reply.outcome, 'rejected')
+    assert.equal(window.isVisible(), false, 'approval hides the elevated main popup')
+    assert.deepEqual(calls.filter(([kind]) => kind === 'top').at(-1), ['top', false])
+    timers.filter(timer => timer.delay === 200).at(-1).callback()
+    assert.equal(focusCount(), focusBeforeApproval, 'popup must not steal focus back from approval')
     nativeResponse = 1
     const review = await new Promise((resolve, reject) => {
       peer.once('data', chunk => resolve(JSON.parse(chunk.toString())))
@@ -146,11 +155,19 @@ test('menu bar uses the existing renderer and native approval fails closed by de
       } }) + '\n')
     })
     assert.equal(configured.configured, true)
+    tray.emit('click')
+    assert.equal(window.isVisible(), true)
     const islandReply = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
-    peer.write(JSON.stringify({ token: 'secret', id: 5, method: 'approve', toolName: 'bash', sessionId: 'session-one' }) + '\n')
+    peer.write(JSON.stringify({ token: 'secret', id: 5, method: 'approve', toolName: 'bash', sessionId: 'session-one',
+      command: 'echo hello', reason: 'fallback reason', displayReason: { en: 'Run a command', zh: '执行命令' },
+    }) + '\n')
     for (let attempt = 0; attempt < 100 && !island?.url; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
     assert.ok(island?.url.startsWith('data:text/html'))
     assert.match(decodeURIComponent(island.url), /允许工具执行吗？/u, 'manual Chinese selection localizes approvals')
+    assert.match(decodeURIComponent(island.url), /echo hello/u, 'approval card shows the exact command')
+    assert.match(decodeURIComponent(island.url), /执行命令/u, 'approval card shows the localized reason')
+    tray.emit('click')
+    assert.equal(window.isVisible(), false, 'menu bar click cannot cover a pending approval')
     const firstIsland = island
     let closedOnBlur = false
     firstIsland.once('closed', () => { closedOnBlur = true })
@@ -189,7 +206,11 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     peer.write(JSON.stringify({ token: 'secret', id: 9, method: 'preview-approval' }) + '\n')
     assert.equal((await englishPreview).preview, true)
     assert.match(decodeURIComponent(island.url), /Approval preview/u, 'manual English selection localizes the preview')
+    cursor = { x: 610, y: 10 }
+    timers.find(timer => timer.delay === 120).callback()
+    assert.equal(window.isVisible(), false, 'notch hover cannot cover an approval preview')
     island.close()
+    await new Promise(resolve => setImmediate(resolve))
     window.hide()
     cursor = { x: 610, y: 10 }
     timers.find(timer => timer.delay === 120).callback()

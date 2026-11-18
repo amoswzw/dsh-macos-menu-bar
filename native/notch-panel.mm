@@ -331,10 +331,14 @@ static napi_value showApproval(napi_env env, napi_callback_info info) {
     CGFloat wing = (width - notch) / 2;
     approvalHeading = label(approvalBaseTitle, NSMakeRect(12,
       height >= 32 ? height - 18 : (height - 16) / 2, wing - 20, 16), 11, YES);
+    approvalHeading.toolTip = approvalBaseTitle;
     [root addSubview:approvalHeading];
     if (height >= 32) {
-      NSString* firstLine = [stringValue(env, args[1]) componentsSeparatedByString:@"\n"].firstObject;
-      [root addSubview:label(firstLine, NSMakeRect(12, 3, wing - 20, 14), 10, NO)];
+      NSString* fullDetail = stringValue(env, args[1]);
+      NSString* firstLine = [fullDetail componentsSeparatedByString:@"\n"].firstObject;
+      NSTextField* summary = label(firstLine, NSMakeRect(12, 3, wing - 20, 14), 10, NO);
+      summary.toolTip = fullDetail;
+      [root addSubview:summary];
     }
     buttonGap = 5;
     buttonX = wing + notch + 7;
@@ -348,6 +352,7 @@ static napi_value showApproval(napi_env env, napi_callback_info info) {
     NSTextField* message = label(stringValue(env, args[1]), NSMakeRect(20, 67, width - 40, height - topPadding - 94), 13, NO);
     message.lineBreakMode = NSLineBreakByWordWrapping;
     message.maximumNumberOfLines = 4;
+    message.toolTip = message.stringValue;
     [root addSubview:message];
     buttonGap = 8;
     buttonX = 20;
@@ -384,7 +389,7 @@ static napi_value updateApprovalQueue(napi_env env, napi_callback_info info) {
   BOOL chinese = [locale hasPrefix:@"zh"];
   if (approvalHeading && approvalBaseTitle) {
     approvalHeading.stringValue = pending > 0 ? approvalCompact
-      ? [NSString stringWithFormat:chinese ? @"待审批 +%d" : @"Pending +%d", pending]
+      ? [NSString stringWithFormat:@"%@ · +%d", approvalBaseTitle, pending]
       : [NSString stringWithFormat:chinese ? @"%@ · 后续 %d 条" : @"%@ · %d more", approvalBaseTitle, pending]
       : approvalBaseTitle;
   }
