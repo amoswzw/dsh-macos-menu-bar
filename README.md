@@ -16,6 +16,8 @@ DSH_CLI="/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/d
 open -a "/Applications/DeepSeek Harness.app"
 ```
 
+克隆仓库后，也可运行 `./install.sh`；脚本会执行上面的 DSH `plugin add` 命令。传入本地仓库路径可改为本地安装，例如 `./install.sh .`。如果 DSH 安装在其他位置，可设置 `DSH_CLI=/path/to/dsh`。脚本只安装插件，不会自动重启正在运行的 Desktop。
+
 也可把安装源固定到某次提交：`github:amoswzw/dsh-macos-menu-bar#<commit-sha>`。从本地源码安装时，改用仓库目录路径：`"$DSH_CLI" plugin --profile desktop add /path/to/dsh-macos-menu-bar`。安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
 
 卸载：
@@ -52,7 +54,7 @@ npm pack --dry-run
 "$DSH_CLI" plugin --profile desktop list --depth 0
 ```
 
-`DSH_CLI` 的值见上面的安装示例。请确认 `npm pack --dry-run` 包含 `cordis.patch.yml`、`index.mjs`、`client.js`、注入脚本、设置页和 `native/` 源码，且没有用户数据或调试截图。Desktop profile 由 Electron 管理，不能用普通 `dsh --profile desktop --dump-config` 检查；上面的 `plugin list` 用于核对已安装依赖。若要检查 bundle 配置层，可在独立的非 Desktop 测试 profile 中执行 `dsh --profile <test-profile> --dump-config`。
+`DSH_CLI` 的值见上面的安装示例。请确认 `npm pack --dry-run` 包含 `cordis.patch.yml`、`install.sh`、`index.mjs`、`client.js`、注入脚本、设置页和 `native/` 源码，且没有用户数据或调试截图。Desktop profile 由 Electron 管理，不能用普通 `dsh --profile desktop --dump-config` 检查；上面的 `plugin list` 用于核对已安装依赖。若要检查 bundle 配置层，可在独立的非 Desktop 测试 profile 中执行 `dsh --profile <test-profile> --dump-config`。
 
 推送源码后，可从固定提交安装测试：
 
