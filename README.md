@@ -8,6 +8,20 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 插件类别：**UI & Experience**。仅支持 macOS 的 **Desktop** profile；请勿按 Web profile 的通用安装示例安装。
 
+## 截图
+
+配置页（从 DSH Host 提供的插件页面截取，不包含会话侧栏）：
+
+![菜单栏与灵动岛配置页](docs/screenshots/settings.png)
+
+内建刘海上的空闲状态岛：
+
+![刘海状态岛与 DeepSeek 图标](docs/screenshots/island-idle.png)
+
+菜单栏内的紧凑审批预览（示例按钮不会授权任务）：
+
+![菜单栏内紧凑审批卡片](docs/screenshots/approval-compact.png)
+
 ## 兼容性与安装
 
 需要 macOS、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。先完全退出正在运行的 Desktop，再从 GitHub 安装：
