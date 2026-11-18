@@ -1,0 +1,3 @@
+- insert:
+    - id: macos-menu-bar
+      name: '@amoswzw/dsh-macos-menu-bar'

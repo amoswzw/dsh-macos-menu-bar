@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>菜单栏与灵动岛设置</title>
+<style>
+  :root{color-scheme:light dark;font:14px -apple-system,BlinkMacSystemFont,sans-serif}*{box-sizing:border-box}body{margin:0;padding:clamp(16px,3vw,32px);background:transparent;color:CanvasText}.wrap{max-width:900px;margin:auto}h1{font-size:23px;margin:0 0 8px}p{line-height:1.5;color:GrayText;margin:0 0 20px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}.card{border:1px solid color-mix(in srgb,CanvasText 18%,transparent);border-radius:14px;padding:18px;background:color-mix(in srgb,Canvas 88%,transparent)}.card h2{font-size:16px;margin:0 0 14px}.row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:14px 0}.row span{line-height:1.4}.row input[type=number]{width:100px;max-width:45%;padding:7px;border-radius:8px;border:1px solid GrayText;background:Canvas;color:CanvasText}.row input[type=checkbox]{width:18px;height:18px;flex:none}.actions{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}button{font:inherit;border:0;border-radius:9px;padding:9px 16px;background:#1974dd;color:#fff;cursor:pointer}button:disabled{opacity:.5}#status{color:GrayText}
+</style>
+<div class="wrap"><h1>菜单栏与灵动岛</h1><p>尺寸使用 macOS 逻辑点，弹窗会限制在屏幕可用区域内。内建屏幕的刘海尺寸由 macOS 读取；没有刘海的旧款 MacBook 会在菜单栏下方显示浮动岛。原生面板不可用时保留菜单栏入口。</p>
+<div class="grid"><section class="card"><h2>窗口</h2><label class="row"><span>最大宽度</span><input name="maxWidth" type="number" min="680" max="1800" step="1"></label><label class="row"><span>最大高度</span><input name="maxHeight" type="number" min="600" max="1200" step="1"></label><label class="row"><span>失焦时收起</span><input name="hideOnBlur" type="checkbox"></label><label class="row"><span>鼠标离开窗口时收起</span><input name="hideOnMouseLeave" type="checkbox"></label></section>
+<section class="card"><h2>灵动岛</h2><label class="row"><span>鼠标移到刘海时打开 DSH 主窗口</span><input name="notchHover" type="checkbox"></label><label class="row"><span>审批以灵动岛卡片显示</span><input name="notchApprovals" type="checkbox"></label><label class="row"><span>审批卡片保持在菜单栏内</span><input name="compactApprovals" type="checkbox"></label><label class="row"><span>隐藏菜单栏图标（需开启悬停入口）</span><input name="hideTrayIcon" type="checkbox"></label></section></div>
+<div class="actions"><button id="reset" type="button" disabled>恢复默认</button><button id="preview" type="button">预览审批弹窗</button><span id="status" role="status" aria-live="polite">读取设置中…</span></div></div>
+<script>
+const defaults = { maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
+  notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false }
+const fields = Object.fromEntries(Object.keys(defaults).map(key =>
+  [key, document.querySelector(`[name="${key}"]`)]))
+const status = document.getElementById('status')
+let ready = false
+let revision = 0
+let saving = false
+let timer
+
+for (const field of Object.values(fields)) field.disabled = true
+
+function show(settings) {
+  for (const [key, value] of Object.entries(settings)) {
+    if (!fields[key]) continue
+    if (fields[key].type === 'checkbox') fields[key].checked = value
+    else fields[key].value = value
+  }
+}
+
+function collect() {
+  return Object.fromEntries(Object.entries(fields).map(([key, field]) =>
+    [key, field.type === 'checkbox' ? field.checked : Number(field.value)]))
+}
+
+function invalid() {
+  for (const [key, field] of Object.entries(fields)) {
+    if (field.type === 'number' && (!field.value || !field.checkValidity())) {
+      return `${key === 'maxWidth' ? '最大宽度' : '最大高度'}超出允许范围`
+    }
+  }
+  return ''
+}
+
+function schedule(delay = 0) {
+  if (!ready) return
+  clearTimeout(timer)
+  revision++
+  const error = invalid()
+  if (error) { status.textContent = error; return }
+  status.textContent = '等待自动保存…'
+  timer = setTimeout(save, delay)
+}
+
+async function save() {
+  if (saving) return
+  const error = invalid()
+  if (error) { status.textContent = error; return }
+  saving = true
+  const current = revision
+  status.textContent = '保存中…'
+  try {
+    const response = await fetch('/macos-menu-bar/settings', {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(collect()),
+    })
+    const saved = await response.json()
+    if (!response.ok) throw Error(saved.error || `HTTP ${response.status}`)
+    if (revision === current) {
+      show(saved)
+      status.textContent = response.headers.get('x-dsh-settings-applied') === 'false'
+        ? '已自动保存，重启后生效' : '已自动保存并应用'
+    } else status.textContent = invalid() || '继续保存新更改…'
+  } catch (error) {
+    status.textContent = `保存失败：${error.message}`
+  } finally {
+    saving = false
+    if (revision !== current && !invalid()) void save()
+  }
+}
+
+for (const [key, field] of Object.entries(fields)) {
+  if (field.type === 'checkbox') {
+    field.addEventListener('change', () => {
+      if (key === 'notchHover' && !field.checked) fields.hideTrayIcon.checked = false
+      if (key === 'hideTrayIcon' && field.checked) fields.notchHover.checked = true
+      if (key === 'notchApprovals' && !field.checked) fields.compactApprovals.checked = false
+      if (key === 'compactApprovals' && field.checked) fields.notchApprovals.checked = true
+      schedule()
+    })
+  } else {
+    field.addEventListener('input', () => schedule(450))
+    field.addEventListener('change', () => schedule())
+  }
+}
+
+document.getElementById('reset').onclick = () => { show(defaults); schedule() }
+document.getElementById('preview').onclick = async () => {
+  try {
+    const response = await fetch('/macos-menu-bar/preview-approval', { method: 'POST' })
+    if (!response.ok) throw Error(`HTTP ${response.status}`)
+    status.textContent = '预览已打开；点击任一选项可关闭'
+  } catch (error) { status.textContent = `预览失败：${error.message}` }
+}
+
+fetch('/macos-menu-bar/settings')
+  .then(response => { if (!response.ok) throw Error(`HTTP ${response.status}`); return response.json() })
+  .then(settings => {
+    show(settings)
+    ready = true
+    for (const field of Object.values(fields)) field.disabled = false
+    document.getElementById('reset').disabled = false
+    status.textContent = '更改将自动保存'
+  })
+  .catch(error => {
+    show(defaults)
+    ready = true
+    for (const field of Object.values(fields)) field.disabled = false
+    document.getElementById('reset').disabled = false
+    status.textContent = `读取失败：${error.message}`
+  })
+</script></html>
