@@ -24,17 +24,17 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 ## 兼容性与安装
 
-需要 macOS、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。先完全退出正在运行的 Desktop，再从 GitHub 安装：
+需要 macOS、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。先完全退出正在运行的 Desktop，再从 npm 安装已发布的 `0.1.0` 版本：
 
 ```sh
 DSH_CLI="/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh"
-"$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar
+"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar@0.1.0
 open -a "/Applications/DeepSeek Harness.app"
 ```
 
-克隆仓库后，也可运行 `./install.sh`；脚本会执行上面的 DSH `plugin add` 命令。传入本地仓库路径可改为本地安装，例如 `./install.sh .`。如果 DSH 安装在其他位置，可设置 `DSH_CLI=/path/to/dsh`。脚本只安装插件，不会自动重启正在运行的 Desktop。
+克隆仓库后，也可运行 `./install.sh`；脚本默认从 GitHub 源码安装。传入包名可改用 npm，例如 `./install.sh @amoswzw/dsh-macos-menu-bar@0.1.0`；传入 `.` 则从本地仓库安装。如果 DSH 安装在其他位置，可设置 `DSH_CLI=/path/to/dsh`。脚本只安装插件，不会自动重启正在运行的 Desktop。
 
-也可把安装源固定到某次提交：`github:amoswzw/dsh-macos-menu-bar#<commit-sha>`。从本地源码安装时，改用仓库目录路径：`"$DSH_CLI" plugin --profile desktop add /path/to/dsh-macos-menu-bar`。安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
+也可从 GitHub 安装：`"$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar`，或把来源固定到某次提交：`github:amoswzw/dsh-macos-menu-bar#<commit-sha>`。安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
 
 卸载：
 
@@ -70,7 +70,7 @@ npm pack --dry-run
 "$DSH_CLI" plugin --profile desktop list --depth 0
 ```
 
-`DSH_CLI` 的值见上面的安装示例。请确认 `npm pack --dry-run` 包含 `cordis.patch.yml`、`install.sh`、`index.mjs`、`client.js`、注入脚本、设置页和 `native/` 源码，且没有用户数据或调试截图。Desktop profile 由 Electron 管理，不能用普通 `dsh --profile desktop --dump-config` 检查；上面的 `plugin list` 用于核对已安装依赖。若要检查 bundle 配置层，可在独立的非 Desktop 测试 profile 中执行 `dsh --profile <test-profile> --dump-config`。
+`DSH_CLI` 的值见上面的安装示例。请确认 `npm pack --dry-run` 包含 `cordis.patch.yml`、`install.sh`、`index.mjs`、`client.js`、注入脚本、设置页、`native/` 源码和公开截图，且没有用户数据或调试截图。Desktop profile 由 Electron 管理，不能用普通 `dsh --profile desktop --dump-config` 检查；上面的 `plugin list` 用于核对已安装依赖。若要检查 bundle 配置层，可在独立的非 Desktop 测试 profile 中执行 `dsh --profile <test-profile> --dump-config`。
 
 推送源码后，可从固定提交安装测试：
 
@@ -78,7 +78,7 @@ npm pack --dry-run
 "$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar#<commit-sha>
 ```
 
-GitHub 安装不需要 npm 发布。若以后决定发布到 npm，先确认 `@amoswzw` npm scope 的发布权限、版本号和公开访问设置，再执行 `npm publish`；用户随后可运行 `"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar@<version>`。官方[插件索引文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/plugin-market.md)还提供可选的 Discover 索引发布方式；GitHub 或 npm 发布本身不要求创建索引。
+`0.1.0` 已发布在 [npm](https://www.npmjs.com/package/@amoswzw/dsh-macos-menu-bar)。以后发布新版本时先提高 `package.json` 版本号、运行测试和打包检查，再执行 `npm publish --access public`；npm 不允许重新发布同名同版本。官方[插件索引文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/plugin-market.md)还提供可选的 Discover 索引发布方式；GitHub 或 npm 发布本身不要求创建索引。
 
 ## 实现
 
