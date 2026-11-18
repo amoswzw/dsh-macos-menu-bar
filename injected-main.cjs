@@ -25,6 +25,7 @@
   let popupAnimation
   let popupAnchor
   let popupMouseTimer
+  let popupMouseGraceUntil = 0
   let disposed = false
   let suppressStartupWindow = true
   let options = { maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
@@ -73,6 +74,7 @@
     if (popupMouseTimer) clearInterval(popupMouseTimer)
     popupMouseTimer = undefined
     popupAnchor = undefined
+    popupMouseGraceUntil = 0
     if (window && !window.isDestroyed()) {
       if (popupBlurHandler) window.removeListener('blur', popupBlurHandler)
       window.setAlwaysOnTop(false)
@@ -100,6 +102,7 @@
     let outsideTicks = 0
     popupMouseTimer = setInterval(() => {
       if (popupWindow !== window || window.isDestroyed() || !window.isVisible()) return
+      if (Date.now() < popupMouseGraceUntil) return
       const point = screen.getCursorScreenPoint()
       const anchor = popupAnchor === 'notch' ? notchHitRegion() : tray?.getBounds()
       if (contains(window.getBounds(), point) || contains(anchor, point)) { outsideTicks = 0; return }
@@ -176,12 +179,13 @@
     check()
   }
 
-  function toggleWindow(anchor = 'tray') {
-    if (approvalPresentationCount || activeApproval || approvalQueue.length) return
+  function toggleWindow(anchor = 'tray', forReview = false) {
+    if (!forReview && (approvalPresentationCount || activeApproval || approvalQueue.length)) return
     suppressStartupWindow = true
     const window = primaryWindow()
     if (!window) { app.focus({ steal: true }); return }
     if (popupWindow === window && window.isVisible()) {
+      if (forReview) { activatePopup(window); return }
       window.hide()
       restoreWindow()
       return
@@ -220,6 +224,11 @@
       }
     }
     window.once('blur', popupBlurHandler)
+  }
+
+  function openReviewWindow() {
+    toggleWindow(options.notchHover && internalDisplay() ? 'notch' : 'tray', true)
+    popupMouseGraceUntil = Date.now() + 1200
   }
 
   function notchAnchor() {
@@ -504,7 +513,7 @@
         buttons,
         defaultId: 0, cancelId: 0,
       })
-      if (result.response === 1) { openFullWindow(); return { outcome: 'review' } }
+      if (result.response === 1) { openReviewWindow(); return { outcome: 'review' } }
       return { outcome: result.response === 2 ? 'allowed-once' : 'rejected' }
     } catch { return { outcome: 'unavailable' } }
     finally { approvalPresentationCount-- }

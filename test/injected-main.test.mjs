@@ -140,6 +140,15 @@ test('menu bar uses the existing renderer and native approval fails closed by de
       peer.write(JSON.stringify({ token: 'secret', id: 2, method: 'approve', toolName: 'bash' }) + '\n')
     })
     assert.equal(review.outcome, 'review')
+    assert.equal(window.isVisible(), true, 'review opens the existing Desktop window')
+    assert.deepEqual(calls.filter(([kind]) => kind === 'top').at(-1), ['top', true],
+      'review keeps the Desktop window floating')
+    assert.ok(calls.filter(([kind]) => kind === 'bounds').at(-1)[1].width <= 1000,
+      'review uses the menu bar popup size')
+    const reviewLeave = timers.filter(timer => timer.delay === 80).at(-1).callback
+    reviewLeave()
+    reviewLeave()
+    assert.equal(window.isVisible(), true, 'review leaves time to move the pointer into the popup')
     const question = await new Promise((resolve, reject) => {
       peer.once('data', chunk => resolve(JSON.parse(chunk.toString())))
       peer.once('error', reject)
