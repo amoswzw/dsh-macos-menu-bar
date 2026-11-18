@@ -54,6 +54,7 @@
   const displayChanged = () => { configureTray(); configureHover() }
   const originalShow = BrowserWindow.prototype.show
   const originalShowInactive = BrowserWindow.prototype.showInactive
+  const originalShowMessageBox = dialog.showMessageBox
   const suppress = window => suppressStartupWindow && popupWindow !== window
     && window.webContents.getURL().startsWith('dsh-app://app/')
   BrowserWindow.prototype.show = function (...args) {
@@ -61,6 +62,10 @@
   }
   BrowserWindow.prototype.showInactive = function (...args) {
     if (!suppress(this)) return originalShowInactive.apply(this, args)
+  }
+  dialog.showMessageBox = function (...args) {
+    if (popupWindow) prepareApprovalPresentation()
+    return originalShowMessageBox.apply(this, args)
   }
 
   function primaryWindow() {
@@ -590,6 +595,7 @@
     disposed = true
     BrowserWindow.prototype.show = originalShow
     BrowserWindow.prototype.showInactive = originalShowInactive
+    dialog.showMessageBox = originalShowMessageBox
     restoreWindow()
     tray?.destroy()
     for (const item of approvalQueue.splice(0)) item.resolve(0)

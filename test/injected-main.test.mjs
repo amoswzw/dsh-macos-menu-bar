@@ -19,6 +19,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
   let allSpaces = false
   let opacity = 1
   let nativeResponse = 0
+  let windowTop = false
   let island
   let cursor = { x: 0, y: 100 }
   let workArea = { x: 0, y: 0, width: 1440, height: 900 }
@@ -52,7 +53,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     setPosition: (x, y) => calls.push(['position', x, y]),
     isVisibleOnAllWorkspaces: () => allSpaces,
     setVisibleOnAllWorkspaces: value => { allSpaces = value; calls.push(['spaces', value]) },
-    setAlwaysOnTop: value => calls.push(['top', value]),
+    setAlwaysOnTop: value => { windowTop = value; calls.push(['top', value]) },
     hide: () => { visible = false; calls.push(['hide']) }, focus: () => calls.push(['focus']),
   })
   let tray
@@ -66,7 +67,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
   const app = Object.assign(new EventEmitter(), {
     setActivationPolicy: policy => calls.push(['activation', policy]),
     whenReady: () => Promise.resolve(), isReady: () => true, getLocale: () => 'en-US', isActive: () => false,
-    focus: () => calls.push(['app-focus']), quit: () => {},
+    focus: () => calls.push(['app-focus']), quit: () => app.emit('before-quit', { preventDefault() {} }),
   })
   const electron = { app, BrowserWindow: FakeBrowserWindow, Tray: FakeTray,
     systemPreferences: { getAnimationSettings: () => ({ prefersReducedMotion: false }) },
@@ -74,7 +75,10 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     Menu: { buildFromTemplate: value => value },
     screen: { getDisplayNearestPoint: () => ({ workArea }), getCursorScreenPoint: () => cursor,
       getPrimaryDisplay: () => ({ internal: true, bounds: { x: 0, y: 0, width: 1440, height: 900 }, workArea }) },
-    dialog: { showMessageBox: async () => ({ response: nativeResponse }) },
+    dialog: { showMessageBox: async () => {
+      calls.push(['quit-dialog-obscured', windowTop && visible])
+      return { response: nativeResponse }
+    } },
   }
   const modules = { electron, 'node:net': net, 'node:fs': fs, 'node:path': path,
     'node:inspector': { close() {} } }
@@ -83,6 +87,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     setInterval: (callback, delay) => { timers.push({ callback, delay }); return { unref() {} } },
     clearInterval() {}, console }
   try {
+    app.on('before-quit', () => { void electron.dialog.showMessageBox({ title: 'Quit?' }) })
     const source = await readFile(new URL('../injected-main.cjs', import.meta.url), 'utf8')
     const code = source.replace('__DSH_MENU_BAR_CONFIG__', JSON.stringify({ socketPath, token: 'secret', iconPath: '/tmp/icon.png' }))
     assert.equal(vm.runInNewContext(code, context), 'installed')
@@ -115,6 +120,15 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     tray.emit('click')
     assert.ok(calls.some(([kind, value]) => kind === 'bounds' && value.width === 1000 && value.height === 688
       && value.x >= workArea.x && value.x + value.width <= workArea.x + workArea.width))
+    tray.emit('right-click')
+    tray.menu.at(-1).click()
+    assert.deepEqual(calls.filter(([kind]) => kind === 'quit-dialog-obscured').at(-1),
+      ['quit-dialog-obscured', false], 'quit confirmation must be visible above the menu bar window')
+    assert.equal(window.isVisible(), false, 'the popup is hidden while quit confirmation is open')
+    assert.equal(allSpaces, false, 'the window restores its original Space behavior for quit confirmation')
+    const focusBeforeQuitRetry = focusCount()
+    timers.filter(timer => timer.delay === 200).at(-1).callback()
+    assert.equal(focusCount(), focusBeforeQuitRetry, 'focus retry cannot cover quit confirmation')
     tray.emit('right-click')
     tray.menu[0].click()
     assert.ok(calls.some(([kind, value]) => kind === 'bounds' && value.width === 1280))
