@@ -188,10 +188,14 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     peer.write(JSON.stringify({ token: 'secret', id: 6, method: 'approve', toolName: 'write', sessionId: 'session-two' }) + '\n')
     await new Promise(resolve => setTimeout(resolve, 10))
     assert.equal(island, firstIsland)
+    assert.match(decodeURIComponent(island.url), /echo hello/u,
+      'a later request cannot replace the first card details')
     island.webContents.emit('will-navigate', { preventDefault() {} }, 'dsh-menu-choice://select/2')
     assert.equal((await islandReply).outcome, 'allowed-once')
     for (let attempt = 0; attempt < 100 && island === firstIsland; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
     assert.notEqual(island, firstIsland)
+    assert.match(decodeURIComponent(island.url), /write/u,
+      'the next card shows its own request after the first is answered')
     const secondReply = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
     island.webContents.emit('will-navigate', { preventDefault() {} }, 'dsh-menu-choice://select/0')
     assert.equal((await secondReply).outcome, 'rejected')
