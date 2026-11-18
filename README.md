@@ -6,6 +6,8 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 这是独立的社区插件，并非 DeepSeek 官方产品。插件运行时读取用户已安装的 Desktop 图标；仓库和发布包不包含 DeepSeek 的图标文件。
 
+插件类别：**UI & Experience**。仅支持 macOS 的 **Desktop** profile；请勿按 Web profile 的通用安装示例安装。
+
 ## 兼容性与安装
 
 需要 macOS、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。先完全退出正在运行的 Desktop，再从 GitHub 安装：
@@ -69,6 +71,8 @@ GitHub 安装不需要 npm 发布。若以后决定发布到 npm，先确认 `@a
 普通启动时，Host 插件向自己的 Desktop 主进程发送 `SIGUSR1`，连接其临时 Node inspector，核对 PID，注入菜单栏逻辑，然后关闭 inspector。显式启动命令则在 `127.0.0.1` 上临时打开一个随机 inspector 端口，完成相同的注入。两种方式都不修改 `app.asar` 或应用签名。注入逻辑在只有当前用户可访问的临时目录中创建 Unix socket；DSH Host 插件通过这个 socket 请求原生审批框。主进程对每个请求验证随机令牌。卸载插件或退出应用会移除菜单栏和 socket。
 
 这依赖 Desktop 发行版保留 Electron 的 Node inspector。若未来发行版关闭该功能，自动注入会记录警告并保留普通 Desktop；显式启动命令会明确报错。安装后请重启已经运行的 Desktop，使 Host 加载插件。临时 inspector 端口会短暂接受本机连接，因此只在可信任的本机用户环境中使用。
+
+运行时插件会控制现有 Desktop 窗口、读取鼠标位置和显示器尺寸，并在需要时通过本机 `clang++` 编译原生面板。插件自身不连接第三方服务；安装 GitHub 版本时，DSH 的包管理器会从 GitHub 下载源码。设置页和本机 IPC 不对远程客户端开放。
 
 ## 开发
 
