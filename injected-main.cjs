@@ -285,7 +285,6 @@
         resolve(index)
       }
       panel.on('closed', () => finish(0))
-      if (!preview) panel.on('blur', () => finish(0))
       panel.webContents.on('will-navigate', (event, url) => {
         event.preventDefault()
         const match = /^dsh-menu-choice:\/\/select\/(\d+)$/u.exec(url)

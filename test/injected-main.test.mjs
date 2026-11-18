@@ -152,6 +152,13 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     assert.ok(island?.url.startsWith('data:text/html'))
     assert.match(decodeURIComponent(island.url), /允许工具执行吗？/u, 'manual Chinese selection localizes approvals')
     const firstIsland = island
+    let closedOnBlur = false
+    firstIsland.once('closed', () => { closedOnBlur = true })
+    firstIsland.emit('blur')
+    assert.equal(closedOnBlur, false, 'looking at the Desktop window must not close the approval card')
+    assert.equal(await Promise.race([islandReply.then(() => true),
+      new Promise(resolve => setTimeout(() => resolve(false), 15))]), false,
+    'looking at the Desktop window must not reject the pending approval')
     peer.write(JSON.stringify({ token: 'secret', id: 6, method: 'approve', toolName: 'write', sessionId: 'session-two' }) + '\n')
     await new Promise(resolve => setTimeout(resolve, 10))
     assert.equal(island, firstIsland)

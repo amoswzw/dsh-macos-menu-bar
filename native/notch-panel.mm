@@ -26,7 +26,6 @@ static NSPanel* islandPanel = nil;
 static NSPanel* approvalPanel = nil;
 static int activeApprovalId = -1;
 static std::deque<std::pair<int, int>> approvalEvents;
-static bool approvalPreview = false;
 static bool approvalCompact = false;
 static NSTextField* approvalHeading = nil;
 static NSString* approvalBaseTitle = nil;
@@ -80,7 +79,6 @@ static void settleApproval(int choice) {
   if (!approvalPanel) return;
   NSPanel* panel = approvalPanel;
   approvalPanel = nil;
-  approvalPreview = false;
   approvalCompact = false;
   approvalHeading = nil;
   approvalBaseTitle = nil;
@@ -89,15 +87,6 @@ static void settleApproval(int choice) {
   approvalEvents.emplace_back(activeApprovalId, choice);
   activeApprovalId = -1;
 }
-
-@interface DSHApprovalDelegate : NSObject <NSWindowDelegate>
-@end
-@implementation DSHApprovalDelegate
-- (void)windowDidResignKey:(NSNotification*)notification {
-  if (notification.object == approvalPanel && !approvalPreview) settleApproval(0);
-}
-@end
-static DSHApprovalDelegate* approvalDelegate = nil;
 
 @interface DSHNativePanel : NSPanel
 @end
@@ -316,9 +305,6 @@ static napi_value showApproval(napi_env env, napi_callback_info info) {
   NSScreen* screen = internalScreen();
   if (!screen) return metrics(env, info);
   napi_get_value_int32(env, args[4], &activeApprovalId);
-  bool preview = false;
-  napi_get_value_bool(env, args[3], &preview);
-  approvalPreview = preview;
   napi_get_value_bool(env, args[5], &approvalCompact);
   if (!actions) actions = [[DSHPanelActions alloc] init];
   uint32_t countButtons = 0;
@@ -335,8 +321,6 @@ static napi_value showApproval(napi_env env, napi_callback_info info) {
     : NSMaxY(screen.visibleFrame) - 4;
   NSRect rect = NSMakeRect(NSMidX(screenFrame) - width / 2, top - height, width, height);
   approvalPanel = makePanel(rect);
-  if (!approvalDelegate) approvalDelegate = [[DSHApprovalDelegate alloc] init];
-  approvalPanel.delegate = approvalDelegate;
   approvalPanel.level = NSPopUpMenuWindowLevel;
   DSHIslandSurface* root = [[DSHIslandSurface alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
   root.attached = hasCutout(screen);
