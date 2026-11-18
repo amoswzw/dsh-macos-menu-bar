@@ -29,6 +29,13 @@ static std::deque<std::pair<int, int>> approvalEvents;
 static bool approvalCompact = false;
 static NSTextField* approvalHeading = nil;
 static NSString* approvalBaseTitle = nil;
+static NSString* approvalFullDetail = nil;
+static NSView* approvalCompactContent = nil;
+static NSScrollView* approvalDetailScroll = nil;
+static NSTimer* approvalHoverTimer = nil;
+static NSRect approvalCompactFrame = NSZeroRect;
+static CGFloat approvalExpandedHeight = 0;
+static NSTimeInterval approvalHoverLastInside = 0;
 static NSView* indicatorDot = nil;
 static NSImageView* brandIcon = nil;
 static NSString* brandIconPath = nil;
@@ -77,11 +84,19 @@ static NSRect islandRect(NSScreen* screen) {
 
 static void settleApproval(int choice) {
   if (!approvalPanel) return;
+  [approvalHoverTimer invalidate];
+  approvalHoverTimer = nil;
   NSPanel* panel = approvalPanel;
   approvalPanel = nil;
   approvalCompact = false;
   approvalHeading = nil;
   approvalBaseTitle = nil;
+  approvalFullDetail = nil;
+  approvalCompactContent = nil;
+  approvalDetailScroll = nil;
+  approvalCompactFrame = NSZeroRect;
+  approvalExpandedHeight = 0;
+  approvalHoverLastInside = 0;
   [panel orderOut:nil];
   [panel close];
   approvalEvents.emplace_back(activeApprovalId, choice);
@@ -202,6 +217,40 @@ static NSPanel* makePanel(NSRect rect) {
   return panel;
 }
 
+static void setApprovalExpanded(bool expanded) {
+  if (!approvalPanel || !approvalCompact || !approvalCompactContent || !approvalDetailScroll) return;
+  CGFloat compactHeight = NSHeight(approvalCompactFrame);
+  CGFloat height = expanded ? approvalExpandedHeight : compactHeight;
+  if (fabs(NSHeight(approvalPanel.frame) - height) < 0.5) return;
+  NSRect frame = approvalCompactFrame;
+  frame.origin.y = NSMaxY(approvalCompactFrame) - height;
+  frame.size.height = height;
+  [approvalPanel setFrame:frame display:YES];
+  BOOL attached = ((DSHIslandSurface*)approvalPanel.contentView).attached;
+  DSHIslandSurface* root = [[DSHIslandSurface alloc] initWithFrame:NSMakeRect(0, 0, NSWidth(frame), height)];
+  root.attached = attached;
+  root.wantsLayer = YES;
+  [approvalCompactContent removeFromSuperview];
+  [approvalDetailScroll removeFromSuperview];
+  approvalCompactContent.frame = NSMakeRect(0, height - compactHeight, NSWidth(frame), compactHeight);
+  approvalDetailScroll.frame = NSMakeRect(18, 14, NSWidth(frame) - 36, height - compactHeight - 22);
+  approvalDetailScroll.hidden = !expanded;
+  [root addSubview:approvalCompactContent];
+  [root addSubview:approvalDetailScroll];
+  approvalPanel.contentView = root;
+  approvalPanel.hasShadow = expanded;
+}
+
+static void pollApprovalHover() {
+  if (!approvalPanel || !approvalCompact) return;
+  if (NSPointInRect([NSEvent mouseLocation], approvalPanel.frame)) {
+    approvalHoverLastInside = [NSDate timeIntervalSinceReferenceDate];
+    setApprovalExpanded(true);
+  } else if ([NSDate timeIntervalSinceReferenceDate] - approvalHoverLastInside > 0.25) {
+    setApprovalExpanded(false);
+  }
+}
+
 static void renderIsland() {
   NSScreen* screen = internalScreen();
   if (!screen || !islandPanel) return;
@@ -312,7 +361,18 @@ static napi_value showApproval(napi_env env, napi_callback_info info) {
   countButtons = MIN(MAX(countButtons, 2), 3);
   NSRect screenFrame = screen.frame;
   CGFloat notch = hasCutout(screen) ? cutoutWidth(screen) : 0;
-  CGFloat width = approvalCompact ? MIN(MAX(560, notch + 440), NSWidth(screenFrame) - 24)
+  CGFloat widestButton = 0;
+  if (approvalCompact) {
+    NSFont* buttonFont = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
+    for (uint32_t index = 0; index < countButtons; index++) {
+      napi_value value;
+      napi_get_element(env, args[2], index, &value);
+      CGFloat textWidth = [stringValue(env, value) sizeWithAttributes:@{NSFontAttributeName: buttonFont}].width;
+      widestButton = MAX(widestButton, ceil(textWidth) + 16);
+    }
+  }
+  CGFloat requiredWing = 14 + 5 * (countButtons - 1) + countButtons * widestButton;
+  CGFloat width = approvalCompact ? MIN(MAX(560, notch + MAX(440, 2 * requiredWing)), NSWidth(screenFrame) - 24)
     : MIN(460, NSWidth(screenFrame) - 24);
   CGFloat height = approvalCompact ? (hasCutout(screen) ? cutoutHeight(screen)
     : MAX(24, NSMaxY(screenFrame) - NSMaxY(screen.visibleFrame)))
@@ -326,19 +386,47 @@ static napi_value showApproval(napi_env env, napi_callback_info info) {
   root.attached = hasCutout(screen);
   root.wantsLayer = YES;
   approvalBaseTitle = stringValue(env, args[0]);
+  approvalFullDetail = stringValue(env, args[1]);
+  NSView* controls = root;
+  if (approvalCompact) {
+    approvalCompactFrame = rect;
+    approvalCompactContent = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, width, height)];
+    [root addSubview:approvalCompactContent];
+    controls = approvalCompactContent;
+    NSFont* textFont = [NSFont systemFontOfSize:13];
+    NSRect measured = [approvalFullDetail boundingRectWithSize:NSMakeSize(width - 48, CGFLOAT_MAX)
+      options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+      attributes:@{NSFontAttributeName: textFont}];
+    CGFloat detailHeight = MIN(MAX(120, ceil(NSHeight(measured)) + 34), MIN(320, NSHeight(screenFrame) / 3));
+    approvalExpandedHeight = height + detailHeight;
+    approvalDetailScroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(18, 14, width - 36, detailHeight - 22)];
+    approvalDetailScroll.drawsBackground = NO;
+    approvalDetailScroll.hasVerticalScroller = YES;
+    approvalDetailScroll.borderType = NSNoBorder;
+    NSTextView* detail = [[NSTextView alloc] initWithFrame:NSMakeRect(0, 0, width - 36, detailHeight - 22)];
+    detail.string = approvalFullDetail;
+    detail.font = textFont;
+    detail.textColor = [NSColor whiteColor];
+    detail.drawsBackground = NO;
+    detail.editable = NO;
+    detail.selectable = YES;
+    detail.textContainerInset = NSMakeSize(0, 4);
+    detail.textContainer.widthTracksTextView = YES;
+    approvalDetailScroll.documentView = detail;
+    approvalDetailScroll.hidden = YES;
+    [root addSubview:approvalDetailScroll];
+  }
   CGFloat buttonWidth, buttonX, buttonY, buttonHeight, buttonGap;
   if (approvalCompact) {
     CGFloat wing = (width - notch) / 2;
     approvalHeading = label(approvalBaseTitle, NSMakeRect(12,
       height >= 32 ? height - 18 : (height - 16) / 2, wing - 20, 16), 11, YES);
     approvalHeading.toolTip = approvalBaseTitle;
-    [root addSubview:approvalHeading];
+    [controls addSubview:approvalHeading];
     if (height >= 32) {
-      NSString* fullDetail = stringValue(env, args[1]);
-      NSString* firstLine = [fullDetail componentsSeparatedByString:@"\n"].firstObject;
+      NSString* firstLine = [approvalFullDetail componentsSeparatedByString:@"\n"].firstObject;
       NSTextField* summary = label(firstLine, NSMakeRect(12, 3, wing - 20, 14), 10, NO);
-      summary.toolTip = fullDetail;
-      [root addSubview:summary];
+      [controls addSubview:summary];
     }
     buttonGap = 5;
     buttonX = wing + notch + 7;
@@ -348,12 +436,12 @@ static napi_value showApproval(napi_env env, napi_callback_info info) {
   } else {
     CGFloat topPadding = root.attached ? cutoutHeight(screen) + 16 : 16;
     approvalHeading = label(approvalBaseTitle, NSMakeRect(20, height - topPadding - 23, width - 40, 23), 15, YES);
-    [root addSubview:approvalHeading];
+    [controls addSubview:approvalHeading];
     NSTextField* message = label(stringValue(env, args[1]), NSMakeRect(20, 67, width - 40, height - topPadding - 94), 13, NO);
     message.lineBreakMode = NSLineBreakByWordWrapping;
     message.maximumNumberOfLines = 4;
     message.toolTip = message.stringValue;
-    [root addSubview:message];
+    [controls addSubview:message];
     buttonGap = 8;
     buttonX = 20;
     buttonWidth = (width - 40 - buttonGap * (countButtons - 1)) / countButtons;
@@ -366,12 +454,23 @@ static napi_value showApproval(napi_env env, napi_callback_info info) {
     NSString* title = stringValue(env, value);
     NSButton* control = button(title, NSMakeRect(buttonX + (buttonWidth + buttonGap) * index,
       buttonY, buttonWidth, buttonHeight), index, index == countButtons - 1, @selector(approvalPressed:));
-    if (approvalCompact) { control.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium]; control.toolTip = title;
+    if (approvalCompact) {
+      CGFloat fontSize = 11;
+      while (fontSize > 9 && [title sizeWithAttributes:@{NSFontAttributeName:
+        [NSFont systemFontOfSize:fontSize weight:NSFontWeightMedium]}].width > buttonWidth - 12) fontSize -= 0.5;
+      control.font = [NSFont systemFontOfSize:fontSize weight:NSFontWeightMedium];
+      control.toolTip = title;
       control.cell.lineBreakMode = NSLineBreakByTruncatingTail; }
-    [root addSubview:control];
+    [controls addSubview:control];
   }
   approvalPanel.contentView = root;
   [approvalPanel makeKeyAndOrderFront:nil];
+  if (approvalCompact) {
+    approvalHoverTimer = [NSTimer scheduledTimerWithTimeInterval:0.1 repeats:YES block:^(NSTimer* timer) {
+      pollApprovalHover();
+    }];
+    pollApprovalHover();
+  }
   return metrics(env, info);
 }
 

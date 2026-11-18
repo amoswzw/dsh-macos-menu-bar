@@ -26,6 +26,7 @@
   let popupAnchor
   let popupMouseTimer
   let popupMouseGraceUntil = 0
+  let suppressNotchHoverUntilExit = false
   let disposed = false
   let suppressStartupWindow = true
   let options = { maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
@@ -33,11 +34,11 @@
   const language = () => options.language === 'auto'
     ? (app.getLocale().toLowerCase().startsWith('zh') ? 'zh-CN' : 'en') : options.language
   const words = () => language() === 'zh-CN'
-    ? { session: '会话', reject: '拒绝', review: '查看详情', allow: '允许一次', approve: '允许工具执行吗？',
+    ? { session: '会话', reject: '拒绝', review: '详情', allow: '允许一次', approve: '允许工具执行吗？',
       preview: '审批弹窗预览', previewCommand: 'git status --short',
       previewDetail: '这是示例审批卡片。选择任何按钮都不会授权任务。',
       open: '打开 DeepSeek Harness', quit: '退出 DeepSeek Harness' }
-    : { session: 'Session', reject: 'Reject', review: 'Review details', allow: 'Allow once', approve: 'Approve tool access?',
+    : { session: 'Session', reject: 'Reject', review: 'Details', allow: 'Allow once', approve: 'Approve tool access?',
       preview: 'Approval preview', previewCommand: 'git status --short',
       previewDetail: 'This is a sample approval card. No choice will authorize a task.',
       open: 'Open DeepSeek Harness', quit: 'Quit DeepSeek Harness' }
@@ -160,6 +161,7 @@
   }
 
   function prepareApprovalPresentation() {
+    suppressNotchHoverUntilExit = true
     const window = popupWindow
     if (!window || window.isDestroyed()) return
     if (window.isVisible()) window.hide()
@@ -265,7 +267,8 @@
     hoverTimer = setInterval(() => {
       if (disposed || approvalPresentationCount || activeApproval || approvalQueue.length) return
       const point = screen.getCursorScreenPoint()
-      if (contains(notchHitRegion(), point) && !primaryWindow()?.isVisible()) toggleWindow('notch')
+      if (!contains(notchHitRegion(), point)) { suppressNotchHoverUntilExit = false; return }
+      if (!suppressNotchHoverUntilExit && !primaryWindow()?.isVisible()) toggleWindow('notch')
     }, 120)
     hoverTimer.unref()
   }
@@ -345,8 +348,13 @@
     const item = approvalQueue.shift()
     activeApproval = item
     updateIndicator()
+    prepareApprovalPresentation()
     void islandApproval(item.title, item.message, item.buttons).then(response => {
       item.resolve(response)
+      if (item.holdForReview && response === 1) {
+        item.reviewing = true
+        return
+      }
       if (activeApproval === item) activeApproval = undefined
       updateIndicator()
       showNextApproval()
@@ -359,9 +367,9 @@
     if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length, language())
   }
 
-  function queueApproval(socket, id, title, message, buttons) {
+  function queueApproval(socket, id, title, message, buttons, holdForReview = false) {
     return new Promise(resolve => {
-      approvalQueue.push({ socket, id, title, message, buttons, resolve })
+      approvalQueue.push({ socket, id, title, message, buttons, holdForReview, resolve })
       updateIndicator()
       showNextApproval()
       if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length, language())
@@ -374,9 +382,20 @@
     updateIndicator()
     if (nativeAvailable()) nativePanel.updateApprovalQueue(approvalQueue.length, language())
     if (activeApproval?.socket === socket && activeApproval.id === targetId) {
-      if (nativeAvailable()) nativePanel.hideApproval()
+      if (activeApproval.reviewing) {
+        activeApproval = undefined
+        updateIndicator()
+        showNextApproval()
+      } else if (nativeAvailable()) nativePanel.hideApproval()
       else if (approvalPanel && !approvalPanel.isDestroyed()) approvalPanel.close()
     }
+  }
+
+  function finishReview(socket, targetId) {
+    if (!activeApproval?.reviewing || activeApproval.socket !== socket || activeApproval.id !== targetId) return
+    activeApproval = undefined
+    updateIndicator()
+    showNextApproval()
   }
 
   function createTray() {
@@ -422,6 +441,10 @@
       if (Number.isSafeInteger(request.targetId)) cancelApproval(socket, request.targetId)
       return { cancelled: true }
     }
+    if (request.method === 'finish-review') {
+      if (Number.isSafeInteger(request.targetId)) finishReview(socket, request.targetId)
+      return { finished: true }
+    }
     if (request.method === 'preview-approval') {
       if (approvalPresentationCount || activeApproval || approvalQueue.length) return { preview: false }
       prepareApprovalPresentation()
@@ -457,7 +480,6 @@
         return { outcome: 'unavailable' }
       }
       const activeLanguage = language() === 'zh-CN' ? 'zh' : 'en'
-      prepareApprovalPresentation()
       approvalPresentationCount++
       const display = request.display
       const session = typeof request.sessionId === 'string' && request.sessionId.length <= 200
@@ -468,7 +490,9 @@
       try {
         const buttons = [request.labels[0], localize(display?.approve) || request.labels[1],
           ...request.labels.length === 3 ? [request.labels[2]] : []]
-        const result = options.notchApprovals && internalDisplay()
+        const useNotch = options.notchApprovals && internalDisplay()
+        if (!useNotch) prepareApprovalPresentation()
+        const result = useNotch
           ? { response: await queueApproval(socket, request.id, localize(display?.question) || request.question,
             (localize(display?.detail) || request.detail || '') + session, buttons) }
           : await dialog.showMessageBox({ type: 'question',
@@ -500,13 +524,14 @@
     const details = [request.toolName, request.command, reason, session].filter(Boolean).join('\n')
     const compactSummary = [request.command || reason || request.toolName,
       ...(request.command && reason ? [reason] : []), session].filter(Boolean).join('\n')
-    prepareApprovalPresentation()
     approvalPresentationCount++
     try {
       const buttons = [w.reject, w.review, w.allow]
-      const result = options.notchApprovals && internalDisplay()
+      const useNotch = options.notchApprovals && internalDisplay()
+      if (!useNotch) prepareApprovalPresentation()
+      const result = useNotch
         ? { response: await queueApproval(socket, request.id, options.compactApprovals ? request.toolName : w.approve,
-          options.compactApprovals ? compactSummary : details, buttons) }
+          options.compactApprovals ? compactSummary : details, buttons, true) }
         : await dialog.showMessageBox({ type: 'question',
         title: w.approve,
         message: request.toolName, detail: [request.command, reason].filter(Boolean).join('\n'),

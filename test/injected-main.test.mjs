@@ -195,6 +195,27 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     const secondReply = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
     island.webContents.emit('will-navigate', { preventDefault() {} }, 'dsh-menu-choice://select/0')
     assert.equal((await secondReply).outcome, 'rejected')
+    const reviewReply = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
+    peer.write(JSON.stringify({ token: 'secret', id: 10, method: 'approve', toolName: 'bash' }) + '\n')
+    const previousIsland = island
+    for (let attempt = 0; attempt < 100 && island === previousIsland; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
+    const reviewCard = island
+    peer.write(JSON.stringify({ token: 'secret', id: 11, method: 'approve', toolName: 'write' }) + '\n')
+    await new Promise(resolve => setTimeout(resolve, 10))
+    assert.equal(island, reviewCard, 'the second request must not replace the first approval')
+    reviewCard.webContents.emit('will-navigate', { preventDefault() {} }, 'dsh-menu-choice://select/1')
+    assert.equal((await reviewReply).outcome, 'review')
+    assert.equal(island, reviewCard, 'the next approval waits while Desktop reviews the first')
+    assert.equal(window.isVisible(), true, 'review keeps the first approval in the floating Desktop window')
+    const finishedReview = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
+    peer.write(JSON.stringify({ token: 'secret', id: 12, method: 'finish-review', targetId: 10 }) + '\n')
+    assert.equal((await finishedReview).finished, true)
+    for (let attempt = 0; attempt < 100 && island === reviewCard; attempt++) await new Promise(resolve => setTimeout(resolve, 5))
+    assert.notEqual(island, reviewCard, 'the second approval appears after the first is fully resolved')
+    assert.equal(window.isVisible(), false, 'the second approval is not covered by the review window')
+    const queuedReply = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
+    island.webContents.emit('will-navigate', { preventDefault() {} }, 'dsh-menu-choice://select/0')
+    assert.equal((await queuedReply).outcome, 'rejected')
     const oldIsland = island
     const previewReply = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
     peer.write(JSON.stringify({ token: 'secret', id: 7, method: 'preview-approval' }) + '\n')
@@ -221,6 +242,11 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     island.close()
     await new Promise(resolve => setImmediate(resolve))
     window.hide()
+    cursor = { x: 610, y: 10 }
+    timers.find(timer => timer.delay === 120).callback()
+    assert.equal(window.isVisible(), false, 'an approval choice must not reopen Desktop while the pointer stays on the notch')
+    cursor = { x: 2000, y: 900 }
+    timers.find(timer => timer.delay === 120).callback()
     cursor = { x: 610, y: 10 }
     timers.find(timer => timer.delay === 120).callback()
     assert.equal(window.isVisible(), true, 'hover opens the original Desktop window')

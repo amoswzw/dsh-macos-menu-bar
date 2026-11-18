@@ -10,6 +10,7 @@ async function fixture(onApproval) {
   const directory = await mkdtemp(join(tmpdir(), 'dsh-menu-test-'))
   const socketPath = join(directory, 'main.sock')
   const activities = []
+  const finishedReviews = []
   const server = createServer(peer => {
     peer.setEncoding('utf8')
     let input = ''
@@ -27,6 +28,10 @@ async function fixture(onApproval) {
           peer.write(JSON.stringify({ id: request.id, updated: true }) + '\n')
         }
         else if (request.method === 'approve' || request.method === 'question-approval') onApproval(request, peer)
+        else if (request.method === 'finish-review') {
+          finishedReviews.push(request.targetId)
+          peer.write(JSON.stringify({ id: request.id, finished: true }) + '\n')
+        }
         else if (request.method === 'dispose') peer.write(JSON.stringify({ id: request.id, disposed: true }) + '\n')
       }
     })
@@ -54,7 +59,7 @@ async function fixture(onApproval) {
       }
     },
   }
-  return { ctx, activities, async close() {
+  return { ctx, activities, finishedReviews, async close() {
     await ctx.cleanup?.()
     await new Promise(resolve => server.close(resolve))
     if (previous.socket === undefined) delete process.env.DSH_MENU_BAR_SOCKET
@@ -98,6 +103,43 @@ test('approval card receives the correlated command and localized reason', async
   } finally { await harness.close() }
 })
 
+test('approval card includes arguments for non-terminal tools', async () => {
+  const harness = await fixture((request, peer) => {
+    assert.equal(request.toolName, 'write')
+    assert.match(request.command, /file_path: \/tmp\/example\.txt/u)
+    assert.match(request.command, /content: example text/u)
+    peer.write(JSON.stringify({ id: request.id, outcome: 'rejected' }) + '\n')
+  })
+  try {
+    await apply(harness.ctx)
+    harness.ctx.sessionEvent({ id: 'session-b' }, { type: 'tool/call', data: {
+      name: 'write', callId: 'call-b', arguments: JSON.stringify({ file_path: '/tmp/example.txt', content: 'example text' }),
+    } })
+    assert.equal(await harness.ctx.listener({ toolName: 'write', callId: 'call-b',
+      agent: { session: { id: 'session-b' } },
+    }), 'rejected')
+  } finally { await harness.close() }
+})
+
+test('approval details never use another tool or session call', async () => {
+  const harness = await fixture((request, peer) => {
+    assert.equal(request.command, undefined)
+    peer.write(JSON.stringify({ id: request.id, outcome: 'rejected' }) + '\n')
+  })
+  try {
+    await apply(harness.ctx)
+    harness.ctx.sessionEvent({ id: 'another-session' }, { type: 'tool/call', data: {
+      name: 'bash', callId: 'same-id', arguments: JSON.stringify({ command: 'wrong session' }),
+    } })
+    harness.ctx.sessionEvent({ id: 'requested-session' }, { type: 'tool/call', data: {
+      name: 'bash', callId: 'same-id', arguments: JSON.stringify({ command: 'wrong tool' }),
+    } })
+    assert.equal(await harness.ctx.listener({ toolName: 'write', callId: 'same-id',
+      agent: { session: { id: 'requested-session' } },
+    }), 'rejected')
+  } finally { await harness.close() }
+})
+
 test('native approval grants only the response for its request', async () => {
   const harness = await fixture((request, peer) => {
     assert.equal(request.toolName, 'bash')
@@ -124,7 +166,9 @@ test('cancellation ignores a late native grant', async () => {
 })
 
 test('review details delegates to the existing Desktop approval UI', async () => {
+  let reviewedId
   const harness = await fixture((request, peer) => {
+    reviewedId = request.id
     peer.write(JSON.stringify({ id: request.id, outcome: 'review' }) + '\n')
   })
   try {
@@ -136,6 +180,7 @@ test('review details delegates to the existing Desktop approval UI', async () =>
     })
     assert.equal(outcome, 'rejected')
     assert.equal(delegated, 1)
+    assert.deepEqual(harness.finishedReviews, [reviewedId], 'the queue advances only after Desktop finishes review')
   } finally { await harness.close() }
 })
 

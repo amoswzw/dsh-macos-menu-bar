@@ -116,21 +116,27 @@ class MenuBarConnection {
  */
 export async function apply(ctx) {
   if (process.platform !== 'darwin') return
-  const recentCommands = new Map()
+  const recentToolDetails = new Map()
   ctx.on('session/event', (session, event) => {
-    if (event?.type !== 'tool/call' || !['bash', 'terminal_send'].includes(event.data?.name)
-      || typeof event.data?.arguments !== 'string' || event.data.arguments.length > 100_000) return
+    if (event?.type !== 'tool/call' || typeof event.data?.arguments !== 'string'
+      || event.data.arguments.length > 100_000 || typeof event.data.callId !== 'string'
+      || typeof session?.id !== 'string') return
     let args
     try { args = JSON.parse(event.data.arguments) } catch { return }
-    const command = event.data.name === 'terminal_send' ? args?.text : args?.command
-    if (typeof command !== 'string' || !command.trim()) return
-    let calls = recentCommands.get(session.id)
+    const direct = event.data.name === 'terminal_send' ? args?.text
+      : event.data.name === 'bash' ? args?.command : undefined
+    const detail = typeof direct === 'string' ? direct
+      : args && typeof args === 'object' && !Array.isArray(args)
+        ? Object.entries(args).map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`).join('\n')
+        : JSON.stringify(args)
+    if (typeof detail !== 'string' || !detail.trim()) return
+    let calls = recentToolDetails.get(session.id)
     if (!calls) {
       calls = new Map()
-      recentCommands.set(session.id, calls)
-      if (recentCommands.size > 100) recentCommands.delete(recentCommands.keys().next().value)
+      recentToolDetails.set(session.id, calls)
+      if (recentToolDetails.size > 100) recentToolDetails.delete(recentToolDetails.keys().next().value)
     }
-    calls.set(event.data.callId, command.slice(0, 4000))
+    calls.set(event.data.callId, { toolName: event.data.name, detail: detail.slice(0, 4000) })
     if (calls.size > 32) calls.delete(calls.keys().next().value)
   }, { global: true })
   let client
@@ -210,7 +216,8 @@ export async function apply(ctx) {
     client.close()
   }, 'macos-menu-bar: native connection')
   ctx.on('approval/request', async (request, next) => {
-    const command = recentCommands.get(request.agent?.session?.id)?.get(request.callId)
+    const linkedCall = recentToolDetails.get(request.agent?.session?.id)?.get(request.callId)
+    const command = linkedCall?.toolName === request.toolName ? linkedCall.detail : undefined
     const reply = await client.request('approve', {
       toolName: request.toolName,
       ...(typeof request.agent?.id === 'string' ? { sessionId: request.agent.id } : {}),
@@ -221,7 +228,14 @@ export async function apply(ctx) {
         ...(typeof request.displayReason.zh === 'string' ? { zh: request.displayReason.zh.slice(0, 4000) } : {}),
       } }),
     }, request.signal)
-    if (reply.outcome === 'review') return request.signal?.aborted ? 'cancelled' : next()
+    if (reply.outcome === 'review') {
+      try { return request.signal?.aborted ? 'cancelled' : await next() }
+      finally {
+        await within(client.request('finish-review', { targetId: reply.id }), 2000).catch(error => {
+          console.warn('dsh-macos-menu-bar: could not advance approval queue after review', error)
+        })
+      }
+    }
     return outcomes.has(reply.outcome) ? reply.outcome : 'unavailable'
   }, { prepend: true })
   ctx.on('user-questions/request', async (request, next) => {
