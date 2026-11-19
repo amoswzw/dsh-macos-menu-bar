@@ -14,7 +14,7 @@
   "exports": { ".": "./index.mjs", "./client": "./client.js", "./package.json": "./package.json" },
   "bin": { "dsh-macos-menu-bar": "bin/launch.mjs" },
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" }, "client": { "platform": "web", "immediately": true, "inject": [] } },
-  "files": ["index.mjs", "client.js", "settings.mjs", "settings.html", "auto-inject.mjs", "injected-main.cjs", "native", "bin", "cordis.patch.yml", "install.sh", "assets/icon-180.png", "docs/screenshots/*.png", "docs/screenshots/demo.gif", "screenshots.json", "README.md", "LICENSE"],
-  "engines": { "node": ">=22", "dsh": ">=0.2.2-rc.3 <0.2.3" },
+  "files": ["index.mjs", "client.js", "settings.mjs", "settings.html", "auto-inject.mjs", "injected-main.cjs", "native", "bin", "cordis.patch.yml", "install.sh", "assets/icon-180.png", "docs/screenshots/*.png", "docs/screenshots/demo.gif", "screenshots.json", "README.md", "README.en.md", "LICENSE"],
+  "engines": { "node": ">=22", "dsh": ">=0.2.2-rc.3 <0.3" },
   "scripts": { "test": "node --test test/*.test.mjs" }
 }
