@@ -1,12 +1,31 @@
 # DSH macOS Menu Bar
 
-DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses the existing Desktop window and can show approval requests in a native dialog or notch card.
+[![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/amoswzw/dsh-macos-menu-bar)
 
-一个可安装到 DeepSeek Harness Desktop profile 的 macOS 插件。它把**现有 Desktop 窗口**作为菜单栏弹出窗口使用，因此会话、草稿、滚动位置和所有 Desktop 页面都留在同一个渲染进程里。需要审批时，插件默认显示 macOS 原生确认框；拒绝是默认选择。安装后从 Finder、Dock 或应用图标正常启动，插件会自动创建菜单栏图标并隐藏 Desktop 的 Dock 图标。
+让 DeepSeek Harness Desktop 从 macOS 菜单栏快速打开，并在需要审批时显示原生提示。插件复用**现有 Desktop 窗口**，会话、草稿和滚动位置不会因打开菜单栏弹窗而重置。可选的刘海状态岛提供悬停入口和审批卡片。
 
-这是独立的社区插件，并非 DeepSeek 官方产品。插件运行时读取用户已安装的 Desktop 图标；仓库和发布包不包含 DeepSeek 的图标文件。
+**仅支持 macOS 的 Desktop profile**，需要 Node.js 22+ 和 DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。安装后完全退出并重开 Desktop；菜单栏图标会自动出现，Dock 图标会隐藏。插件是独立社区项目，并非 DeepSeek 官方产品。
 
-插件类别：**UI & Experience**。仅支持 macOS 的 **Desktop** profile；请勿按 Web profile 的通用安装示例安装。已向 [DSH Plugin Hub](https://github.com/dshplugin/dsh-plugin-hub) 提交收录，收录后可在插件市场一键安装。
+> [!IMPORTANT]
+> [市场详情页](https://dsh-plugin.org/plugins/amoswzw/dsh-macos-menu-bar)目前使用独立撰写的导读，其中的 `--profile <your-profile>` 通用命令不适用于本插件。请使用下文的 `--profile desktop` 命令安装。
+
+![macOS 菜单栏与刘海插件概览：Desktop 设置页、刘海状态岛和审批预览](docs/screenshots/market-preview.png)
+
+## 快速安装
+
+完全退出 Desktop，在终端运行：
+
+```sh
+DSH_CLI="/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh"
+"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar
+open -a "/Applications/DeepSeek Harness.app"
+```
+
+安装后在 DSH 左侧栏打开 **菜单栏与灵动岛 / Menu Bar & Island**，可设置窗口大小、悬停入口、审批卡片及语言。刘海原生面板需要 Xcode Command Line Tools；编译失败时菜单栏入口仍可用。
+
+English: macOS Desktop profile only. Quit Desktop, run the command above, then reopen it. Requires Node.js 22+ and DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`.
+
+## 演示
 
 ![菜单栏、刘海入口、审批与设置的动画演示](https://raw.githubusercontent.com/amoswzw/dsh-macos-menu-bar/main/docs/screenshots/demo.gif)
 
@@ -14,9 +33,9 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 ## 截图
 
-配置页（使用本仓库设置页和示例配置渲染，不包含会话侧栏）：
+安装版 Desktop 中的插件配置页：
 
-![菜单栏与灵动岛配置页](docs/screenshots/settings.png)
+![Desktop 侧栏中的菜单栏与灵动岛配置页](docs/screenshots/desktop-settings.png)
 
 内建刘海上的空闲状态岛：
 
@@ -30,15 +49,9 @@ DeepSeek Harness Desktop menu bar and notch plugin for macOS. The plugin reuses 
 
 需要 macOS、Node.js 22+、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`（`engines.dsh` 已声明该范围，覆盖 rc.3、rc.4 及后续 0.2.2 正式版；运行中的 DSH 不满足范围时会直接拒绝安装）。安装前先完全退出正在运行的 Desktop。
 
-**方式一：npm 安装（推荐）**
+**方式一：npm 安装（推荐）**：使用上面的快速安装命令。
 
-```sh
-DSH_CLI="/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh"
-"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar
-open -a "/Applications/DeepSeek Harness.app"
-```
-
-不带版本号即安装 npm `latest`。注意：刚发布、尚未超过 DSH 供应链 `minimumReleaseAge` 策略时限的新版本会被自动降级到上一个已放行的版本；如需立即装最新版，请显式指定版本号（例如 `@amoswzw/dsh-macos-menu-bar@0.1.2`）。本插件已向 DSH Plugin Hub（[dsh-plugin.org](https://dsh-plugin.org)）提交收录；收录后可在 Desktop 内的「插件市场」一键安装。市场自定义安装只接受 npm 包名，不支持 GitHub 源码。
+不带版本号即安装 npm `latest`。注意：刚发布、尚未超过 DSH 供应链 `minimumReleaseAge` 策略时限的新版本会被自动降级到上一个已放行的版本；如需立即装最新版，请显式指定版本号（例如 `@amoswzw/dsh-macos-menu-bar@0.1.2`）。本插件已被 [DSH Plugin Hub 收录](https://dsh-plugin.org/plugins/amoswzw/dsh-macos-menu-bar)。市场自定义安装只接受 npm 包名，不支持 GitHub 源码。
 
 **方式二：GitHub 源码安装**
 
@@ -56,7 +69,7 @@ open -a "/Applications/DeepSeek Harness.app"
 
 安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
 
-English quick start: requires macOS, Node.js 22+, and DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`. Quit Desktop completely, then run the npm install commands above (or install from GitHub source for the newest features) and reopen the app. Open **Menu Bar & Island** in the DSH sidebar to choose **Follow system**, **English**, or **简体中文**. The plugin has been submitted to [DSH Plugin Hub](https://github.com/dshplugin/dsh-plugin-hub); once listed, it can be installed with one click from the in-app plugin market.
+English quick start: requires macOS, Node.js 22+, and DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`. Quit Desktop completely, then run the npm install commands above (or install from GitHub source for the newest features) and reopen the app. Open **Menu Bar & Island** in the DSH sidebar to choose **Follow system**, **English**, or **简体中文**. The plugin is [listed on DSH Plugin Hub](https://dsh-plugin.org/plugins/amoswzw/dsh-macos-menu-bar).
 
 更新到最新发布版（`add` 不会覆盖已安装的版本）：
 
