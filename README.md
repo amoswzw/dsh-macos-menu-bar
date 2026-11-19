@@ -1,161 +1,51 @@
 # DSH macOS Menu Bar
 
+[English](README.en.md) | 简体中文
+
 [![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/amoswzw/dsh-macos-menu-bar)
 
-让 DeepSeek Harness Desktop 从 macOS 菜单栏快速打开，并在需要审批时显示原生提示。插件复用**现有 Desktop 窗口**，会话、草稿和滚动位置不会因打开菜单栏弹窗而重置。可选的刘海状态岛提供悬停入口和审批卡片。
+从 macOS 菜单栏一键呼出 / 收起 DeepSeek Harness Desktop，审批时弹出原生提示。复用现有 Desktop 窗口，会话、草稿和滚动位置都不会丢；还支持刘海悬停入口和审批卡片。
 
-**仅支持 macOS 的 Desktop profile**，需要 Node.js 22+ 和 DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`。安装后完全退出并重开 Desktop；菜单栏图标会自动出现，Dock 图标会隐藏。插件是独立社区项目，并非 DeepSeek 官方产品。
+![演示](https://raw.githubusercontent.com/amoswzw/dsh-macos-menu-bar/main/docs/screenshots/demo.gif)
 
-> [!IMPORTANT]
-> [市场详情页](https://dsh-plugin.org/plugins/amoswzw/dsh-macos-menu-bar)目前使用独立撰写的导读，其中的 `--profile <your-profile>` 通用命令不适用于本插件。请使用下文的 `--profile desktop` 命令安装。
+## 安装
 
-![macOS 菜单栏与刘海插件概览：Desktop 设置页、刘海状态岛和审批预览](docs/screenshots/market-preview.png)
+需要 **macOS**、**Node.js 22+** 和 **DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.3`**（在 `0.2.2-rc.5` 上实测通过）。
 
-## 快速安装
+1. 完全退出 DeepSeek Harness Desktop。
+2. 运行：
 
-完全退出 Desktop，在终端运行：
+   ```sh
+   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar
+   ```
 
-```sh
-DSH_CLI="/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh"
-"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar
-open -a "/Applications/DeepSeek Harness.app"
-```
+3. 重新打开 Desktop，菜单栏图标会自动出现。
 
-安装后在 DSH 左侧栏打开 **菜单栏与灵动岛 / Menu Bar & Island**，可设置窗口大小、悬停入口、审批卡片及语言。刘海原生面板需要 Xcode Command Line Tools；编译失败时菜单栏入口仍可用。
+> 请保留 `--profile desktop`（仅支持 Desktop）。若应用不在 `/Applications`，把命令开头的路径改成实际位置。想装 GitHub 最新源码，把包名换成 `github:amoswzw/dsh-macos-menu-bar` 即可，无需构建。
 
-English: macOS Desktop profile only. Quit Desktop, run the command above, then reopen it. Requires Node.js 22+ and DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`.
-
-## 演示
-
-![菜单栏、刘海入口、审批与设置的动画演示](https://raw.githubusercontent.com/amoswzw/dsh-macos-menu-bar/main/docs/screenshots/demo.gif)
-
-动画为安装版 Desktop 的真实界面录制：悬停刘海弹出主窗口、设置页切换语言、预览审批卡片（悬停可展开详情，选择按钮不会授权任务）、失焦自动收起，以及菜单栏图标的右键菜单。
-
-## 截图
-
-安装版 Desktop 中的插件配置页：
-
-![Desktop 侧栏中的菜单栏与灵动岛配置页](docs/screenshots/desktop-settings.png)
-
-内建刘海上的空闲状态岛：
-
-![刘海状态岛与 DeepSeek 图标](docs/screenshots/island-idle.png)
-
-菜单栏内的紧凑审批预览（示例按钮不会授权任务）：
-
-![菜单栏内紧凑审批卡片](docs/screenshots/approval-compact.png)
-
-## 兼容性与安装
-
-需要 macOS、Node.js 22+、DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`（`engines.dsh` 已声明该范围，覆盖 rc.3、rc.4 及后续 0.2.2 正式版；运行中的 DSH 不满足范围时会直接拒绝安装）。安装前先完全退出正在运行的 Desktop。
-
-**方式一：npm 安装（推荐）**：使用上面的快速安装命令。
-
-不带版本号即安装 npm `latest`。注意：刚发布、尚未超过 DSH 供应链 `minimumReleaseAge` 策略时限的新版本会被自动降级到上一个已放行的版本；如需立即装最新版，请显式指定版本号（例如 `@amoswzw/dsh-macos-menu-bar@0.1.2`）。本插件已被 [DSH Plugin Hub 收录](https://dsh-plugin.org/plugins/amoswzw/dsh-macos-menu-bar)。市场自定义安装只接受 npm 包名，不支持 GitHub 源码。
-
-**方式二：GitHub 源码安装**
-
-本插件无需构建，GitHub 安装始终可用，能拿到仓库最新功能：
+<details>
+<summary>更新 / 卸载</summary>
 
 ```sh
-"$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar
+# 更新
+".../bin/dsh" plugin --profile desktop update @amoswzw/dsh-macos-menu-bar
+
+# 卸载
+".../bin/dsh" plugin --profile desktop remove @amoswzw/dsh-macos-menu-bar
 ```
 
-也可固定到某次提交：`github:amoswzw/dsh-macos-menu-bar#<commit-sha>`。
+操作后完全退出并重开 Desktop。卸载会保留 `~/.dsh/macos-menu-bar.json`（设置了 `DSH_HOME` 则在 `$DSH_HOME/` 下）中的个人设置。
 
-**方式三：`./install.sh`**
+</details>
 
-克隆仓库后运行 `./install.sh`，脚本默认从 GitHub 源码安装。传入包名可改用 npm，例如 `./install.sh @amoswzw/dsh-macos-menu-bar@0.1.2`；传入 `.` 则从本地仓库安装。如果 DSH 安装在其他位置，可设置 `DSH_CLI=/path/to/dsh`。脚本只安装插件，不会自动重启正在运行的 Desktop。
+## 使用
 
-安装一次即可；以后从 Finder、Dock、Spotlight 或 `open -a` 正常启动。插件在 Host 加载时自动注入主进程。若设置了 `DSH_HOME`，安装命令会使用对应的 Desktop profile。安装后若仍看到旧窗口行为，请完全退出并重开 Desktop。
-
-English quick start: requires macOS, Node.js 22+, and DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.2.3`. Quit Desktop completely, then run the npm install commands above (or install from GitHub source for the newest features) and reopen the app. Open **Menu Bar & Island** in the DSH sidebar to choose **Follow system**, **English**, or **简体中文**. The plugin is [listed on DSH Plugin Hub](https://dsh-plugin.org/plugins/amoswzw/dsh-macos-menu-bar).
-
-更新到最新发布版（`add` 不会覆盖已安装的版本）：
-
-```sh
-"$DSH_CLI" plugin --profile desktop update @amoswzw/dsh-macos-menu-bar
-# 或卸载后重装：
-"$DSH_CLI" plugin --profile desktop remove @amoswzw/dsh-macos-menu-bar
-"$DSH_CLI" plugin --profile desktop add @amoswzw/dsh-macos-menu-bar
-```
-
-卸载：
-
-```sh
-"$DSH_CLI" plugin --profile desktop remove @amoswzw/dsh-macos-menu-bar
-```
-
-卸载后也要完全退出并重开 Desktop。设置保存在 `$DSH_HOME/macos-menu-bar.json`（未设置 `DSH_HOME` 时在 `~/.dsh/macos-menu-bar.json`）；卸载命令不会删除这份个人设置。
-
-仓库还提供显式启动命令，适合调试或在插件自动注入不可用时查看错误。它需要 Node.js 22+：
-
-```sh
-"$HOME/.dsh/profiles/desktop/node_modules/.bin/dsh-macos-menu-bar" "/Applications/DeepSeek Harness.app"
-```
-
-左键点击菜单栏图标可显示或隐藏同一个 Desktop 窗口。弹窗显示期间会临时加入所有 macOS Space，以便从当前桌面打开；收起后恢复原窗口的 Space 属性。右键提供“打开完整窗口”和“退出”。弹出窗口失焦时自动隐藏，任务继续运行。工具审批框提供“拒绝”“详情”“允许一次”；审批出现时主窗口弹窗会收起，防止遮挡审批按钮。鼠标停在紧凑审批区域时，同一张卡片向下展开可滚动详情，显示工具参数、命令和请求原因；移开后缩回，不会因此提交审批。只有“详情”会打开悬浮的 Desktop 窗口、切换到当前审批所属会话，并交还给原有审批界面；审阅尚未完成时，即使窗口自动隐藏，也能从菜单栏或刘海再次打开。应用访问等使用 DSH `user-questions` 审批意图的请求也会弹出原生确认框。允许一次只答复当前请求；取消或通信失败不会授权。
-
-在 DSH 左侧栏打开 **菜单栏与灵动岛** 配置页，可设置弹窗最大宽高、失焦收起、鼠标离开收起、刘海悬停打开主窗口、审批卡片、菜单栏内紧凑审批、隐藏菜单栏图标及语言。界面支持简体中文和英语，默认跟随 macOS 语言，也可手动选择；设置页、菜单栏菜单、审批预览和插件自身的审批文案会一起切换。更改会自动保存，恢复默认也会立即应用。尺寸按 macOS 逻辑点计算，并按当前屏幕可用区域限制；默认最大宽高为 1120 × 850。原生 AppKit 面板读取内建屏幕的安全区与刘海两侧区域；有刘海时紧贴屏幕顶边，没有刘海的旧款 MacBook 显示在菜单栏下方。鼠标移到刘海黑色岛的任一可见位置会直接弹出原来的 Desktop 主窗口；只有审批请求才展开刘海审批卡片。刘海左侧显示 DeepSeek 图标，工作或等待审批时图标会轻微呼吸；右侧指示灯空闲时为灰色，Agent 工作时蓝色呼吸，等待审批时橙色呼吸。隐藏菜单栏图标需要同时开启悬停入口、使用内建屏幕作为主屏，而且原生面板必须可用。设置保存在 `$DSH_HOME/macos-menu-bar.json`，不修改其他插件的配置。
-
-配置页中的“预览审批弹窗”会打开一张示例卡片，供检查位置和样式；预览选择不会授权任务。开启菜单栏内紧凑审批后，标题与请求摘要显示在刘海左侧、按钮显示在右侧；紧凑时卡片不进入工作区，悬停时同一张卡片展开详情。按钮宽度按文案和屏幕大小调整。多个会话同时请求审批时，最先收到的请求始终显示在前，其他请求排队并标出等待数量；选择“详情”后，队列会等待该请求在 Desktop 中处理完毕再显示下一条。已取消的请求会从队列移除。详情按会话、工具调用 ID 和工具名关联，避免显示其他审批的参数。
-
-原生刘海面板在插件启动时使用系统 `clang++` 编译，并缓存到用户目录。使用刘海面板需要可用的 Xcode Command Line Tools；若编译或加载失败，菜单栏图标继续可用。默认不开启悬停和审批卡片；普通 macOS 审批框仍是默认样式。设置页及其 API 只接受本机连接，远程访问 DSH 的用户不能更改这台 Mac 的菜单栏设置。
-
-## 维护与发布
-
-本仓库已经是 DSH bundle：`package.json` 的 `dsh.bundle.patch` 指向 `cordis.patch.yml`，其中插入 Host 插件行。DSH 官方的[打包与安装说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)说明，`dsh plugin --profile desktop add` 会把 bundle 加进 Desktop profile。源码全部是运行入口，不依赖安装期 `prepare` 或构建脚本；原生面板源码在运行时编译。
-
-发布前在仓库目录执行：
-
-```sh
-npm test
-npm pack --dry-run
-"$DSH_CLI" plugin --profile desktop list --depth 0
-```
-
-`DSH_CLI` 的值见上面的安装示例。请确认 `npm pack --dry-run` 包含 `cordis.patch.yml`、`install.sh`、`index.mjs`、`client.js`、注入脚本、设置页、`native/` 源码和公开截图，且没有用户数据或调试截图。Desktop profile 由 Electron 管理，不能用普通 `dsh --profile desktop --dump-config` 检查；上面的 `plugin list` 用于核对已安装依赖。若要检查 bundle 配置层，可在独立的非 Desktop 测试 profile 中执行 `dsh --profile <test-profile> --dump-config`。
-
-推送源码后，可从固定提交安装测试：
-
-```sh
-"$DSH_CLI" plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar#<commit-sha>
-```
-
-`0.1.2` 已发布在 [npm](https://www.npmjs.com/package/@amoswzw/dsh-macos-menu-bar)。以后发布新版本时先提高 `package.json` 版本号、运行测试和打包检查，再执行 `npm publish --access public`；npm 不允许重新发布同名同版本。发布新版后，请同步更新 [DSH Plugin Hub 的收录 issue](https://github.com/dshplugin/dsh-plugin-hub/issues/826) 中的安装命令与兼容性说明。DSH 新版本（例如 0.2.3）发布后，先在兼容版本上复测插件行为，再扩大 `engines.dsh` 范围。官方[插件索引文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/plugin-market.md)还提供可选的 Discover 索引发布方式；GitHub 或 npm 发布本身不要求创建索引。
-
-## 实现
-
-普通启动时，Host 插件向自己的 Desktop 主进程发送 `SIGUSR1`，连接其临时 Node inspector，核对 PID，注入菜单栏逻辑，然后关闭 inspector。显式启动命令则在 `127.0.0.1` 上临时打开一个随机 inspector 端口，完成相同的注入。两种方式都不修改 `app.asar` 或应用签名。注入逻辑在只有当前用户可访问的临时目录中创建 Unix socket；DSH Host 插件通过这个 socket 请求原生审批框。主进程对每个请求验证随机令牌。卸载插件或退出应用会移除菜单栏和 socket。
-
-这依赖 Desktop 发行版保留 Electron 的 Node inspector。若未来发行版关闭该功能，自动注入会记录警告并保留普通 Desktop；显式启动命令会明确报错。安装后请重启已经运行的 Desktop，使 Host 加载插件。临时 inspector 端口会短暂接受本机连接，因此只在可信任的本机用户环境中使用。
-
-运行时插件会控制现有 Desktop 窗口、读取鼠标位置和显示器尺寸，并在需要时通过本机 `clang++` 编译原生面板。插件自身不连接第三方服务；安装 GitHub 版本时，DSH 的包管理器会从 GitHub 下载源码。设置页和本机 IPC 不对远程客户端开放。
+- **点击**菜单栏图标：显示 / 收起 Desktop 窗口；**右键**：打开完整窗口或退出。
+- 在 Desktop 左侧栏打开 **菜单栏与灵动岛**，配置窗口大小、悬停入口、审批卡片和语言。
+- 刘海原生面板需要 Xcode Command Line Tools；缺失或编译失败时菜单栏入口不受影响。
 
 ## 开发
 
-```sh
-node --test test/*.test.mjs
-```
+运行测试：`npm test`。插件通过 Desktop 的 Node inspector 注入菜单栏逻辑，不修改应用包或签名。社区维护项目，非 DeepSeek 官方产品。
 
-若本机另有 Electron 开发版，可运行隔离的注入探针：
-
-```sh
-ELECTRON_BINARY=/path/to/Electron.app/Contents/MacOS/Electron \
-DSH_APP_ICON=/path/to/icon.png node test/probe-inspector.mjs
-```
-
-探针只运行仓库内的空 Electron fixture，不会启动个人的 DSH profile；它验证 inspector 注入和 IPC。已在本机安装的 Desktop 上验证普通启动、菜单栏、侧边栏配置页、Shader 页面布局、顶部中央悬停及图标隐藏。
-
-## 已知限制
-
-- 已显示的原生审批框无法通过 Electron 的 message box API 从 Host 侧关闭。请求取消后插件立即返回取消，迟到的点击不会授权。
-- 安装后需要完全退出并重新启动 Desktop；已经运行的主进程不会自动加载新插件。
-- 原 Desktop 窗口的最小尺寸为 520 × 600 点；可用区域比这个尺寸更小时，系统可能无法把整个窗口放入屏幕。
-- 原生刘海审批卡片已在安装的 Desktop 进程中显示并验证收起按拒绝结算；真实 DSH 工具审批尚未端到端触发。
-- 原生刘海面板需要本机能运行 `clang++`；缺少 Xcode Command Line Tools 时，菜单栏入口继续工作，开启刘海审批后会回退到 Electron 卡片，顶部悬停仍使用屏幕中央的命中区域。
-- 插件依赖 DSH Desktop 当前的 Electron 主进程结构和 Node inspector。DSH 更新后应先在兼容版本上复测；`engines.dsh` 目前只声明 0.2.2-rc.3 至 0.2.2，尚未声明支持 0.2.3 及以后版本。
-
-## 许可证
-
-[MIT](LICENSE) © 2026 Amos W (amoswzw)。
+[MIT 许可证](LICENSE) © 2026 Amos W (amoswzw)。
