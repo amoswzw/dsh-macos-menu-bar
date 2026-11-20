@@ -42,7 +42,20 @@
 
 - **点击**菜单栏图标：显示 / 收起 Desktop 窗口；**右键**：打开完整窗口或退出。
 - 在 Desktop 左侧栏打开 **菜单栏与灵动岛**，配置窗口大小、悬停入口、审批卡片和语言。
+- 状态灯：**蓝色**执行中、**绿色**已完成、**橙色**等待审批（优先显示）。
+- 开启自动隐藏后，查看完成结果且无任务或审批时，灵动岛隐藏；新任务开始时重新显示，隐藏时仍支持刘海悬停。
 - 刘海原生面板需要 Xcode Command Line Tools；缺失或编译失败时菜单栏入口不受影响。
+
+## yabai 兼容
+
+若弹窗被 yabai 自动放大，在 yabai 配置文件（通常为 `~/.config/yabai/yabairc`）末尾添加：
+
+```sh
+yabai -m rule --add label=dsh-macos-menu-bar app="^DeepSeek Harness$" manage=off
+yabai -m rule --apply dsh-macos-menu-bar
+```
+
+在终端执行这两条命令可立即生效。DSH 弹窗和完整窗口都会保持浮动，其他应用不受影响。插件不会自动修改 yabai 配置。
 
 ## 开发
 

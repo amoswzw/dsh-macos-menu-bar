@@ -42,7 +42,20 @@ Quit and reopen Desktop afterward. Uninstalling keeps your settings in `~/.dsh/m
 
 - **Click** the menu bar icon to show / hide the Desktop window; **right-click** to open the full window or quit.
 - Open **Menu Bar & Island** in the Desktop sidebar to configure the window size, hover entry point, approval cards, and language.
+- Status light: **blue** for running tasks, **green** for completion, **orange** for pending approval (takes priority).
+- With automatic hiding enabled, viewing completed tasks hides the island when no tasks or approvals remain. New tasks bring it back; notch hover still works while hidden.
 - The native notch panel needs Xcode Command Line Tools; the menu bar entry still works without them or if compilation fails.
+
+## yabai compatibility
+
+If yabai expands the popup, add this at the end of your yabai configuration (usually `~/.config/yabai/yabairc`):
+
+```sh
+yabai -m rule --add label=dsh-macos-menu-bar app="^DeepSeek Harness$" manage=off
+yabai -m rule --apply dsh-macos-menu-bar
+```
+
+Run both commands in a terminal to apply immediately. DSH popups and the full window will float; other apps are unaffected. The plugin does not edit your yabai configuration automatically.
 
 ## Development
 
