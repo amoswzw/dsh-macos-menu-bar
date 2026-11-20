@@ -30,7 +30,8 @@
   let disposed = false
   let suppressStartupWindow = true
   let options = { maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-    notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false, language: 'auto' }
+    notchHover: false, notchApprovals: false, compactApprovals: false, hideTrayIcon: false, hideWhenIdle: false,
+    language: 'auto' }
   const language = () => options.language === 'auto'
     ? (app.getLocale().toLowerCase().startsWith('zh') ? 'zh-CN' : 'en') : options.language
   const words = () => language() === 'zh-CN'
@@ -44,6 +45,10 @@
       open: 'Open DeepSeek Harness', quit: 'Quit DeepSeek Harness' }
   let hoverTimer
   let nativeEventTimer
+  let islandVisible = false
+  let popupEverOpened = false
+  let greenSticky = false
+  let wasRunning = false
   let nextNativeApprovalId = 0
   const nativeApprovalResolvers = new Map()
   let approvalPanel
@@ -93,6 +98,7 @@
     originalBounds = undefined
     originalVisibleOnAllWorkspaces = undefined
     popupBlurHandler = undefined
+    applyIdleVisibility()
   }
 
   function contains(bounds, point) {
@@ -163,6 +169,9 @@
     window.show()
     app.focus({ steal: true })
     window.focus()
+    popupEverOpened = true
+    greenSticky = false
+    applyIdleVisibility()
   }
 
   function prepareApprovalPresentation() {
@@ -203,6 +212,9 @@
       originalBounds = window.getBounds()
       originalVisibleOnAllWorkspaces = window.isVisibleOnAllWorkspaces?.() ?? false
       popupWindow = window
+      popupEverOpened = true
+      // Opening the window acknowledges the completion notification.
+      greenSticky = false
     }
     popupAnchor = anchor
     const icon = anchor === 'notch' ? notchAnchor() : tray.getBounds()
@@ -232,6 +244,7 @@
       }
     }
     window.once('blur', popupBlurHandler)
+    applyIdleVisibility()
   }
 
   function openReviewWindow(sessionId) {
@@ -271,10 +284,12 @@
   function configureHover() {
     if (hoverTimer) { clearInterval(hoverTimer); hoverTimer = undefined }
     nativePanel?.hideIsland()
+    islandVisible = false
     if (!options.notchHover || !internalDisplay()) return
     if (nativeAvailable()) {
       nativePanel.showIsland(settings.iconPath
         || path.resolve(path.dirname(process.execPath), '../Resources/icon.png'))
+      islandVisible = true
       updateIndicator()
     }
     hoverTimer = setInterval(() => {
@@ -288,8 +303,33 @@
     hoverTimer.unref()
   }
 
+  const busy = () => runningCount > 0 || activeApproval !== undefined
+    || approvalQueue.length > 0 || approvalPresentationCount > 0
+
+  function applyIdleVisibility() {
+    if (disposed) return
+    // Keep an unseen completion visible until the user opens the window.
+    const hideIsland = options.hideWhenIdle && !busy() && popupEverOpened
+      && !greenSticky
+    if (hideIsland) {
+      greenSticky = false
+      if (islandVisible) { nativePanel?.hideIsland(); islandVisible = false }
+      return
+    }
+    if (!islandVisible && options.notchHover && internalDisplay() && nativeAvailable()) {
+      nativePanel.showIsland(settings.iconPath
+        || path.resolve(path.dirname(process.execPath), '../Resources/icon.png'))
+      islandVisible = true
+    }
+  }
+
   function updateIndicator() {
-    if (nativeAvailable()) nativePanel.setIndicator(activeApproval || approvalQueue.length ? 2 : runningCount ? 1 : 0)
+    const runningNow = runningCount > 0
+    if (wasRunning && !runningNow) greenSticky = !primaryWindow()?.isVisible()
+    wasRunning = runningNow
+    if (nativeAvailable()) nativePanel.setIndicator(activeApproval || approvalQueue.length ? 2
+      : runningNow ? 1 : 3)
+    applyIdleVisibility()
   }
 
   function islandApproval(title, message, buttons, preview = false) {
@@ -468,22 +508,24 @@
       void islandApproval(options.compactApprovals ? 'bash' : w.preview,
         `${w.previewCommand}\n${w.previewDetail}`, [w.reject, w.review, w.allow], true)
         .catch(error => console.error('dsh-macos-menu-bar: approval preview failed', error))
-        .finally(() => { approvalPresentationCount-- })
+        .finally(() => { approvalPresentationCount--; updateIndicator() })
       return { preview: true }
     }
     if (request.method === 'configure') {
       const next = request.settings
       if (!next || !Number.isInteger(next.maxWidth) || next.maxWidth < 680 || next.maxWidth > 1800
         || !Number.isInteger(next.maxHeight) || next.maxHeight < 600 || next.maxHeight > 1200
-        || ['hideOnBlur', 'hideOnMouseLeave', 'notchHover', 'notchApprovals', 'compactApprovals', 'hideTrayIcon'].some(key => typeof next[key] !== 'boolean')
+        || ['hideOnBlur', 'hideOnMouseLeave', 'notchHover', 'notchApprovals', 'compactApprovals', 'hideTrayIcon', 'hideWhenIdle'].some(key => typeof next[key] !== 'boolean')
         || next.hideTrayIcon && !next.notchHover
+        || next.hideWhenIdle && !next.notchHover
         || next.compactApprovals && !next.notchApprovals
         || !['auto', 'en', 'zh-CN'].includes(next.language)) return { outcome: 'unavailable' }
       options = { maxWidth: next.maxWidth, maxHeight: next.maxHeight, hideOnBlur: next.hideOnBlur,
         hideOnMouseLeave: next.hideOnMouseLeave,
         notchHover: next.notchHover, notchApprovals: next.notchApprovals,
-        compactApprovals: next.compactApprovals, hideTrayIcon: next.hideTrayIcon, language: next.language }
-      if (app.isReady()) { configureTray(); configureHover(); configurePopupMouseTracking() }
+        compactApprovals: next.compactApprovals, hideTrayIcon: next.hideTrayIcon,
+        hideWhenIdle: next.hideWhenIdle, language: next.language }
+      if (app.isReady()) { configureTray(); configureHover(); configurePopupMouseTracking(); applyIdleVisibility() }
       return { configured: true }
     }
     if (request.method === 'dispose') { dispose(); return { disposed: true } }
@@ -518,7 +560,7 @@
         })
         return { selected: request.labels[result.response] || request.labels[0] }
       } catch { return { outcome: 'unavailable' } }
-      finally { approvalPresentationCount-- }
+      finally { approvalPresentationCount--; updateIndicator() }
     }
     if (request.method !== 'approve') return { outcome: 'unavailable' }
     const displayReason = request.displayReason
@@ -556,7 +598,7 @@
       if (result.response === 1) { openReviewWindow(request.sessionId); return { outcome: 'review' } }
       return { outcome: result.response === 2 ? 'allowed-once' : 'rejected' }
     } catch { return { outcome: 'unavailable' } }
-    finally { approvalPresentationCount-- }
+    finally { approvalPresentationCount--; updateIndicator() }
   }
 
   const server = net.createServer(socket => {

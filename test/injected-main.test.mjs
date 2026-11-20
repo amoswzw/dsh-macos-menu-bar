@@ -178,7 +178,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
       peer.once('data', chunk => resolve(JSON.parse(chunk.toString())))
       peer.write(JSON.stringify({ token: 'secret', id: 4, method: 'configure', settings: {
         maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-        notchHover: false, notchApprovals: true, compactApprovals: false, hideTrayIcon: false, language: 'zh-CN',
+        notchHover: false, notchApprovals: true, compactApprovals: false, hideTrayIcon: false, hideWhenIdle: false, language: 'zh-CN',
       } }) + '\n')
     })
     assert.equal(configured.configured, true)
@@ -240,7 +240,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     const reviewHoverConfig = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
     peer.write(JSON.stringify({ token: 'secret', id: 20, method: 'configure', settings: {
       maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-      notchHover: true, notchApprovals: true, compactApprovals: false, hideTrayIcon: false, language: 'zh-CN',
+      notchHover: true, notchApprovals: true, compactApprovals: false, hideTrayIcon: false, hideWhenIdle: false, language: 'zh-CN',
     } }) + '\n')
     assert.equal((await reviewHoverConfig).configured, true)
     cursor = { x: 610, y: 10 }
@@ -268,7 +268,7 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     const hoverConfigured = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
     peer.write(JSON.stringify({ token: 'secret', id: 8, method: 'configure', settings: {
       maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
-      notchHover: true, notchApprovals: false, compactApprovals: false, hideTrayIcon: false, language: 'en',
+      notchHover: true, notchApprovals: false, compactApprovals: false, hideTrayIcon: false, hideWhenIdle: false, language: 'en',
     } }) + '\n')
     assert.equal((await hoverConfigured).configured, true)
     const englishPreview = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
@@ -297,6 +297,22 @@ test('menu bar uses the existing renderer and native approval fails closed by de
     leave()
     leave()
     assert.equal(window.isVisible(), false, 'popup closes after the pointer leaves the window and notch')
+    const idleConfigured = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
+    peer.write(JSON.stringify({ token: 'secret', id: 30, method: 'configure', settings: {
+      maxWidth: 1120, maxHeight: 850, hideOnBlur: true, hideOnMouseLeave: true,
+      notchHover: true, notchApprovals: false, compactApprovals: false, hideTrayIcon: false, hideWhenIdle: true, language: 'en',
+    } }) + '\n')
+    assert.equal((await idleConfigured).configured, true)
+    const destroyCount = () => calls.filter(([kind]) => kind === 'destroy').length
+    assert.equal(destroyCount(), 0, 'idle state keeps the tray icon and only dims the island to a green light')
+    const busy = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
+    peer.write(JSON.stringify({ token: 'secret', id: 31, method: 'activity', runningCount: 1 }) + '\n')
+    assert.equal((await busy).updated, true)
+    assert.equal(destroyCount(), 0, 'running agents keep the entry point')
+    const idleAgain = new Promise(resolve => peer.once('data', chunk => resolve(JSON.parse(chunk.toString()))))
+    peer.write(JSON.stringify({ token: 'secret', id: 32, method: 'activity', runningCount: 0 }) + '\n')
+    assert.equal((await idleAgain).updated, true)
+    assert.equal(destroyCount(), 0, 'the idle state never removes the menu bar entry')
     peer.end()
   } finally {
     context.__dshMacosMenuBarV1?.dispose()

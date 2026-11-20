@@ -200,8 +200,17 @@ export async function apply(ctx) {
   try { ping = await within(client.request('ping'), 3000) }
   catch (error) { client.close(); throw error }
   if (ping.ready !== true) { client.close(); throw new Error('menu bar main process did not become ready') }
-  try { await within(client.request('configure', { settings: await readSettings() }), 2000) }
-  catch (error) { console.warn('dsh-macos-menu-bar: settings unavailable', error) }
+  try {
+    // Desktop may be too busy to answer during boot, so retry until the
+    // injected main process confirms the settings landed.
+    let applied = false
+    for (let attempt = 0; attempt < 5 && !applied; attempt++) {
+      if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 1000))
+      try { applied = (await within(client.request('configure', { settings: await readSettings() }), 2000)).configured === true }
+      catch (error) { console.warn('dsh-macos-menu-bar: settings unavailable', error) }
+    }
+    if (!applied) console.warn('dsh-macos-menu-bar: settings never applied to the native main process')
+  } catch (error) { console.warn('dsh-macos-menu-bar: settings unavailable', error) }
   const syncActivity = () => {
     try {
       const listed = ctx.get?.('agents')?.list()

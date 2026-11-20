@@ -181,8 +181,9 @@ static void paintIndicator() {
   indicatorDot.layer.opacity = 1;
   indicatorDot.layer.backgroundColor = (indicatorState == 2 ? [NSColor systemOrangeColor]
     : indicatorState == 1 ? [NSColor systemBlueColor]
+    : indicatorState == 3 ? [NSColor systemGreenColor]
     : [NSColor colorWithCalibratedWhite:0.55 alpha:1]).CGColor;
-  if (indicatorState == 0) return;
+  if (indicatorState == 0 || indicatorState == 3) return;
   CABasicAnimation* pulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
   pulse.fromValue = @0.35;
   pulse.toValue = @1;
@@ -341,7 +342,7 @@ static napi_value setIndicator(napi_env env, napi_callback_info info) {
   size_t count = 1; napi_value args[1]; int32_t state = 0;
   napi_get_cb_info(env, info, &count, args, nullptr, nullptr);
   if (count == 1) napi_get_value_int32(env, args[0], &state);
-  indicatorState = state >= 0 && state <= 2 ? state : 0;
+  indicatorState = state >= 0 && state <= 3 ? state : 0;
   paintIndicator();
   return metrics(env, info);
 }
