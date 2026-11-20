@@ -10,7 +10,7 @@ Open DeepSeek Harness Desktop from the macOS menu bar, with native prompts when 
 
 ## Install
 
-Requires **macOS**, **Node.js 22+**, and **DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.3`** (verified on `0.2.2-rc.5`).
+Requires **macOS**, **Node.js 22+**, and **DeepSeek Harness Desktop `>=0.2.2-rc.3`** (verified on `0.2.2-rc.5`).
 
 1. Quit DeepSeek Harness Desktop completely.
 2. Run:

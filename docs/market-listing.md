@@ -19,7 +19,7 @@ https://raw.githubusercontent.com/amoswzw/dsh-macos-menu-bar/main/docs/screensho
 - 分类：UI & Experience（当前页面显示为“工具与能力”）。
 - 平台：仅 macOS，且仅 Desktop profile。
 - 推荐安装命令：`dsh plugin --profile desktop add @amoswzw/dsh-macos-menu-bar`。
-- 兼容范围：Node.js 22+；DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.3`。
+- 兼容范围：Node.js 22+；DeepSeek Harness Desktop `>=0.2.2-rc.3`。
 - 安装后须完全退出并重开 Desktop。
 - GitHub 源码安装是命令行备选方式：`dsh plugin --profile desktop add github:amoswzw/dsh-macos-menu-bar`。
 

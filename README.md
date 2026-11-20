@@ -10,7 +10,7 @@
 
 ## 安装
 
-需要 **macOS**、**Node.js 22+** 和 **DeepSeek Harness Desktop `>=0.2.2-rc.3 <0.3`**（在 `0.2.2-rc.5` 上实测通过）。
+需要 **macOS**、**Node.js 22+** 和 **DeepSeek Harness Desktop `>=0.2.2-rc.3`**（在 `0.2.2-rc.5` 上实测通过）。
 
 1. 完全退出 DeepSeek Harness Desktop。
 2. 运行：
